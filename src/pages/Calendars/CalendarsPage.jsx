@@ -26,6 +26,17 @@ export default function CalendarsPage() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState([]);
   const [tipo, setTipo] = useState("ambos");
+  // ya esta
+  const [filtersOpen, setFiltersOpen] = useState(false); // móvil: oculto por defecto
+const [estado, setEstado] = useState([]);              // ['asistida','no_asistida','pendiente']
+
+// Deriva estado normalizado de una cita
+const deriveEstado = (e) => {
+  if (e?.status === 'no_show' || e?.noShow) return 'no_asistida';
+  if (typeof e?.paid === 'boolean') return e.paid ? 'asistida' : 'pendiente';
+  return 'pendiente';
+};
+
 
   const [showGaps, setShowGaps] = useState(false);
   const [viewType, setViewType] = useState("timeGridWeek");
@@ -95,6 +106,14 @@ const staffMap = useMemo(
 
   // ======= Eventos (citas + ausencias + festivos) con nombres =======
 const events = useMemo(() => {
+  // Filtrado por estado (si hay estados seleccionados)
+  const byEstado = (e) => {
+    if (!estado.length) return true;          // sin filtro => todas
+    const st = deriveEstado(e);               // 'asistida'|'no_asistida'|'pendiente'
+    return estado.includes(st);
+  };
+
+  const baseCitas = (citas ?? []).filter(byEstado);
   // Citas con colores + nombres de calendario/personal en extendedProps
   const apts = (citas ?? []).map((e) => ({
     ...e,
@@ -123,7 +142,7 @@ const events = useMemo(() => {
 
   // Festivos: los mantienes tal cual (ya suelen venir con display:'background')
   return [...apts, ...abs, ...(holidays ?? [])];
-}, [citas, ausencias, holidays, calMap, staffMap]);
+}, [citas, ausencias, holidays, calMap, staffMap, estado]);
 
 
   // huecos libres (solo día/semana)
@@ -192,79 +211,116 @@ const events = useMemo(() => {
       </header>
 
       {/* ======= Filtros ======= */}
-      <section className={clsx(glassCard, "p-4")}>
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-          <FilterGroup title="Calendarios">
-            <CheckAllRow checked={calAllChecked} onChange={toggleCalAll} />
-            <MultiCheckbox
-              items={(calendars ?? []).map(c => ({ id: c.id, label: c.name }))}
-              values={selectedCalendars}
-              onChange={setSelectedCalendars}
-            />
-          </FilterGroup>
+<section className={clsx(glassCard, "p-4")}>
+  {/* Botón de abrir/cerrar filtros (solo móvil) */}
+  <div className="mb-3 md:hidden">
+    <button
+      type="button"
+      onClick={() => setFiltersOpen(v => !v)}
+      className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
+      title="Mostrar/ocultar filtros"
+    >
+      {/* icono filtro */}
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="opacity-80">
+        <path d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm-2 6h14v2H5v-2z"/>
+      </svg>
+      Filtros
+    </button>
+  </div>
 
-          <FilterGroup title="Categorías">
-            <CheckAllRow checked={catAllChecked} onChange={toggleCatAll} />
-            <MultiCheckbox
-              items={(categories ?? []).map(c => ({ id: c.id, label: c.name }))}
-              values={selectedCategories}
-              onChange={setSelectedCategories}
-            />
-          </FilterGroup>
+  {/* Contenido colapsable: en móvil se oculta si filtersOpen=false; en desktop siempre visible */}
+  <div className={clsx(filtersOpen ? "block" : "hidden", "md:block")}>
+    <div className="grid gap-3 md:grid-cols-5">
+      {/* Calendarios */}
+      <FilterGroup title="Calendarios">
+        <CheckAllRow checked={calAllChecked} onChange={toggleCalAll} />
+        <MultiCheckbox
+          items={(calendars ?? []).map(c => ({ id: c.id, label: c.name }))}
+          values={selectedCalendars}
+          onChange={setSelectedCalendars}
+        />
+      </FilterGroup>
 
-          <FilterGroup title="Personal">
-            <CheckAllRow checked={staffAllChecked} onChange={toggleStaffAll} />
-            <MultiCheckbox
-              items={(staff ?? []).map(s => ({ id: s.id, label: s.name }))}
-              values={selectedStaff}
-              onChange={setSelectedStaff}
-            />
-          </FilterGroup>
+      {/* Categorías */}
+      <FilterGroup title="Categorías">
+        <CheckAllRow checked={catAllChecked} onChange={toggleCatAll} />
+        <MultiCheckbox
+          items={(categories ?? []).map(c => ({ id: c.id, label: c.name }))}
+          values={selectedCategories}
+          onChange={setSelectedCategories}
+        />
+      </FilterGroup>
 
-          <FilterGroup title="Tipo">
-            <div className="flex gap-3">
-              {[
-                { id: "cita", label: "Citas" },
-                { id: "ausencia", label: "Ausencias" },
-                { id: "ambos", label: "Ambos" },
-              ].map((t) => (
-                <label key={t.id} className="inline-flex items-center gap-2 text-sm text-slate-300">
-                  <input
-                    type="radio"
-                    name="tipo"
-                    value={t.id}
-                    checked={tipo === t.id}
-                    onChange={(e) => setTipo(e.target.value)}
-                    className="rounded size-4 border-white/20 bg-white/10"
-                  />
-                  {t.label}
-                </label>
-              ))}
-            </div>
-          </FilterGroup>
+      {/* Personal */}
+      <FilterGroup title="Personal">
+        <CheckAllRow checked={staffAllChecked} onChange={toggleStaffAll} />
+        <MultiCheckbox
+          items={(staff ?? []).map(s => ({ id: s.id, label: s.name }))}
+          values={selectedStaff}
+          onChange={setSelectedStaff}
+        />
+      </FilterGroup>
+
+      {/* Tipo */}
+      <FilterGroup title="Tipo">
+        <div className="flex flex-col gap-2 text-sm text-slate-300">
+          {[
+            { id: "cita", label: "Citas" },
+            { id: "ausencia", label: "Ausencias" },
+            { id: "ambos", label: "Ambos" },
+          ].map((t) => (
+            <label key={t.id} className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="tipo"
+                value={t.id}
+                checked={tipo === t.id}
+                onChange={(e) => setTipo(e.target.value)}
+                className="rounded size-4 border-white/20 bg-white/10"
+              />
+              {t.label}
+            </label>
+          ))}
         </div>
+      </FilterGroup>
 
-        <div className="flex flex-wrap items-center gap-2 mt-3">
-          <Button variant="primary" onClick={() => openAdd(null, null)}>+ Añadir cita</Button>
+      {/* Estado */}
+      <FilterGroup title="Estado">
+        <MultiCheckbox
+          items={[
+            { id: 'asistida',     label: 'Asistidas' },
+            { id: 'no_asistida',  label: 'No asistidas' },
+            { id: 'pendiente',    label: 'Pendientes' },
+          ]}
+          values={estado}
+          onChange={setEstado}
+        />
+      </FilterGroup>
+    </div>
+  </div>
+</section>
+{/* ======= Acciones ======= */}
+<div className="flex flex-wrap items-center gap-2 mt-2">
+  <Button variant="primary" onClick={() => openAdd(null, null)}>+ Añadir cita</Button>
 
-          {(viewType === "timeGridWeek" || viewType === "timeGridDay") && (
-            <Button
-              variant={showGaps ? "danger" : "ghost"}
-              onClick={() => setShowGaps((s) => !s)}
-            >
-              {showGaps ? "Ocultar huecos" : "Mostrar huecos"}
-            </Button>
-          )}
+  {(viewType === "timeGridWeek" || viewType === "timeGridDay") && (
+    <Button
+      variant={showGaps ? "danger" : "ghost"}
+      onClick={() => setShowGaps((s) => !s)}
+    >
+      {showGaps ? "Ocultar huecos" : "Mostrar huecos"}
+    </Button>
+  )}
 
-          <Link
-            to="/calendarios/gestion"
-            className="inline-flex items-center px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
-            title="Gestión de calendarios"
-          >
-            ⚙️ Gestión
-          </Link>
-        </div>
-      </section>
+  <Link
+    to="/calendarios/gestion"
+    className="inline-flex items-center px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
+    title="Gestión de calendarios"
+  >
+    ⚙️ Gestión
+  </Link>
+</div>
+
 
       {/* ======= Calendario ======= */}
       <section className={clsx(glassCard, "p-3")}>
