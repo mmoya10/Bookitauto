@@ -30,6 +30,8 @@ export default function CalendarsPage() {
   const [showGaps, setShowGaps] = useState(false);
   const [viewType, setViewType] = useState("timeGridWeek");
   const calendarRef = useRef(null);
+  const panRef = useRef(null);
+
   const qc = useQueryClient();
 
   // ====== datos ======
@@ -38,6 +40,18 @@ export default function CalendarsPage() {
   const { data: staff } = useQuery({ queryKey: ["staff"], queryFn: fetchStaff });
   const { data: businessHours } = useQuery({ queryKey: ["business-hours"], queryFn: fetchBusinessHours });
   const { data: holidays } = useQuery({ queryKey: ["holidays"], queryFn: fetchHolidays });
+
+  // arriba del return:
+const calMap = useMemo(
+  () => Object.fromEntries((calendars ?? []).map(c => [c.id, c.name])),
+  [calendars]
+);
+const staffMap = useMemo(
+  () => Object.fromEntries((staff ?? []).map(s => [s.id, s.name])),
+  [staff]
+);
+
+
 
   // marcar todo al inicio
   useEffect(() => {
@@ -79,21 +93,38 @@ export default function CalendarsPage() {
     enabled: !!range.start && !!range.end,
   });
 
-  const events = useMemo(() => {
-    const apts = (citas ?? []).map((e) => ({
+  // ======= Eventos (citas + ausencias + festivos) con nombres =======
+const events = useMemo(() => {
+  // Citas con colores + nombres de calendario/personal en extendedProps
+  const apts = (citas ?? []).map((e) => ({
+    ...e,
+    backgroundColor: e.paid ? "rgba(16,185,129,0.35)" : "rgba(124,58,237,0.35)",
+    borderColor:     e.paid ? "rgba(16,185,129,0.6)"  : "rgba(124,58,237,0.6)",
+    textColor: "#fff",
+    extendedProps: {
       ...e,
-      backgroundColor: e.paid ? "rgba(16,185,129,0.35)" : "rgba(124,58,237,0.35)", // verde si pagado
-      borderColor:     e.paid ? "rgba(16,185,129,0.6)"  : "rgba(124,58,237,0.6)",
-      textColor: "#fff",
-    }));
-    const abs = (ausencias ?? []).map((e) => ({
+      calendarName: calMap?.[e.calendarId],
+      staffName:    staffMap?.[e.staffId],
+    },
+  }));
+
+  // Ausencias con estilo y un nombre por si se usa en el render
+  const abs = (ausencias ?? []).map((e) => ({
+    ...e,
+    backgroundColor: "rgba(239,68,68,0.25)",
+    borderColor: "rgba(239,68,68,0.6)",
+    textColor: "#fff",
+    extendedProps: {
       ...e,
-      backgroundColor: "rgba(239,68,68,0.25)",
-      borderColor: "rgba(239,68,68,0.6)",
-      textColor: "#fff",
-    }));
-    return [...apts, ...abs, ...(holidays ?? [])];
-  }, [citas, ausencias, holidays]);
+      calendarName: "Ausencia",
+      staffName:    staffMap?.[e.staffId],
+    },
+  }));
+
+  // Festivos: los mantienes tal cual (ya suelen venir con display:'background')
+  return [...apts, ...abs, ...(holidays ?? [])];
+}, [citas, ausencias, holidays, calMap, staffMap]);
+
 
   // huecos libres (solo día/semana)
   const freeSlotEvents = useMemo(() => {
@@ -204,7 +235,7 @@ export default function CalendarsPage() {
                     value={t.id}
                     checked={tipo === t.id}
                     onChange={(e) => setTipo(e.target.value)}
-                    className="size-4 rounded border-white/20 bg-white/10"
+                    className="rounded size-4 border-white/20 bg-white/10"
                   />
                   {t.label}
                 </label>
@@ -213,7 +244,7 @@ export default function CalendarsPage() {
           </FilterGroup>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 mt-3">
           <Button variant="primary" onClick={() => openAdd(null, null)}>+ Añadir cita</Button>
 
           {(viewType === "timeGridWeek" || viewType === "timeGridDay") && (
@@ -227,7 +258,7 @@ export default function CalendarsPage() {
 
           <Link
             to="/calendarios/gestion"
-            className="inline-flex items-center rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-zinc-100 hover:bg-white/15"
+            className="inline-flex items-center px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
             title="Gestión de calendarios"
           >
             ⚙️ Gestión
@@ -237,6 +268,7 @@ export default function CalendarsPage() {
 
       {/* ======= Calendario ======= */}
       <section className={clsx(glassCard, "p-3")}>
+
         <FullCalendar
           ref={calendarRef}
           plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
@@ -289,10 +321,14 @@ export default function CalendarsPage() {
           }}
           // Look & feel (cabeceras visibles, fondo, etc.)
           dayHeaderClassNames={() => ["!text-zinc-100 !bg-white/10"]}
+          dayHeaderContent={(arg) => <span className="text-[#0b1020]">{arg.text}</span>}
           slotLabelClassNames={() => ["!text-slate-200"]}
           dayCellClassNames={() => ["!bg-white/5"]}
           eventContent={renderEventContent}             // ✅ badge Pagado/Pendiente
           eventClassNames={() => ["!rounded-md !border !border-white/20 !backdrop-blur"]}
+          dayMaxEvents={5} // ✅ máx 5 por celda en dayGridMonth
+  moreLinkContent={(arg) => `+${arg.num} más`} // texto del enlace
+  moreLinkClassNames={() => ["!text-xs !font-medium !underline"]}
         />
       </section>
 
@@ -301,7 +337,7 @@ export default function CalendarsPage() {
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">{modal.event ? "Editar cita" : "Nueva cita"}</h3>
                 <Button variant="ghost" size="sm" onClick={() => setModal({ open:false, start:null, end:null, event:null })}>
                   Cerrar
@@ -335,7 +371,7 @@ export default function CalendarsPage() {
 /* ====== Filtros UI ====== */
 function FilterGroup({ title, children }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="p-3 border rounded-xl border-white/10 bg-white/5">
       <div className="mb-2 text-xs font-medium text-slate-300">{title}</div>
       {children}
     </div>
@@ -343,8 +379,8 @@ function FilterGroup({ title, children }) {
 }
 function CheckAllRow({ checked, onChange }) {
   return (
-    <label className="mb-1 inline-flex items-center gap-2 text-sm text-slate-200">
-      <input type="checkbox" className="size-4 rounded border-white/20 bg-white/10" checked={checked} onChange={onChange}/>
+    <label className="inline-flex items-center gap-2 mb-1 text-sm text-slate-200">
+      <input type="checkbox" className="rounded size-4 border-white/20 bg-white/10" checked={checked} onChange={onChange}/>
       Marcar todo
     </label>
   );
@@ -352,14 +388,14 @@ function CheckAllRow({ checked, onChange }) {
 function MultiCheckbox({ items, values, onChange }) {
   const toggle = (id) => onChange(values.includes(id) ? values.filter(v=>v!==id) : [...values, id]);
   return (
-    <div className="grid gap-2 max-h-24 overflow-auto pr-1"> {/* ✅ máx 3 aprox + scroll */}
+    <div className="grid gap-2 pr-1 overflow-auto max-h-24"> {/* ✅ máx 3 aprox + scroll */}
       {items.map((it) => (
         <label key={it.id} className="inline-flex items-center gap-2 text-sm text-slate-200">
           <input
             type="checkbox"
             checked={values.includes(it.id)}
             onChange={() => toggle(it.id)}
-            className="size-4 rounded border-white/20 bg-white/10"
+            className="rounded size-4 border-white/20 bg-white/10"
           />
           {it.label}
         </label>
@@ -429,12 +465,12 @@ function AppointmentForm({ mode, event, calendars, staff, initialStart, initialE
         </div>
       </div>
 
-      <label className="mt-1 inline-flex items-center gap-2 text-sm text-slate-200">
-        <input type="checkbox" className="size-4 rounded border-white/20 bg-white/10" checked={paid} onChange={(e)=>setPaid(e.target.checked)} />
+      <label className="inline-flex items-center gap-2 mt-1 text-sm text-slate-200">
+        <input type="checkbox" className="rounded size-4 border-white/20 bg-white/10" checked={paid} onChange={(e)=>setPaid(e.target.checked)} />
         Pagado
       </label>
 
-      <div className="mt-1 flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-1">
         <Button variant="primary" disabled={submitting} type="submit">
           {submitting ? "Guardando…" : isEdit ? "Guardar cambios" : "Aceptar"}
         </Button>
@@ -450,6 +486,13 @@ function renderEventContent(arg) {
   const isAbs  = event.extendedProps?.type === "ausencia";
   const paid   = !!event.extendedProps?.paid;
 
+  const calName   = event.extendedProps?.calendarName || "Cita";
+  const staffName = event.extendedProps?.staffName || "";
+
+  // Intento simple de extraer el "cliente" de "Corte - Juan"
+  const rawTitle = event.title || "";
+  const client = rawTitle.includes(" - ") ? rawTitle.split(" - ")[1] : rawTitle;
+
   const wrap = document.createElement("div");
   wrap.style.display = "grid";
   wrap.style.gap = "2px";
@@ -457,9 +500,21 @@ function renderEventContent(arg) {
   wrap.style.fontSize = "12px";
 
   const title = document.createElement("div");
-  title.textContent = event.title || (isAbs ? "Ausencia" : isFree ? "Hueco" : "Cita");
   title.style.fontWeight = "600";
   title.style.lineHeight = "1.1";
+
+  if (isAbs) {
+    title.textContent = `Ausencia · ${staffName || "Personal"}`;
+  } else if (isFree) {
+    title.textContent = "Hueco";
+  } else {
+    // 👉 Calendario – Cliente · Personal
+    const left  = calName;
+    const mid   = client ? ` – ${client}` : "";
+    const right = staffName ? ` · ${staffName}` : "";
+    title.textContent = `${left}${mid}${right}`;
+  }
+
   wrap.appendChild(title);
 
   if (!isAbs && !isFree) {
@@ -476,6 +531,7 @@ function renderEventContent(arg) {
 
   return { domNodes: [wrap] };
 }
+
 
 /* ================== Helpers ================== */
 function toLocalInput(d) {

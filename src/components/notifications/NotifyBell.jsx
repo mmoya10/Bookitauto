@@ -12,7 +12,7 @@ import Button from "../common/Button";
 import clsx from "clsx";
 
 const glass =
-  "rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
+  "rounded-2xl border border-white/10 bg-black/30 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
 
 const IcBell = (p) => (
   <svg viewBox="0 0 24 24" width="22" height="22" {...p}>
@@ -68,7 +68,7 @@ export default function NotifyBell() {
           type="button"
           title="Notificaciones"
           aria-label="Notificaciones"
-          className="relative grid place-items-center rounded-xl border border-white/10 bg-white/10 w-12 h-12 hover:bg-white/20 active:translate-y-px"
+          className="relative grid w-12 h-12 border place-items-center rounded-xl border-white/10 bg-white/10 hover:bg-white/20 active:translate-y-px"
           onClick={() => setOpen((v) => !v)}
         >
           <IcBell className="text-zinc-100" />
@@ -91,10 +91,10 @@ export default function NotifyBell() {
               )}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-sm font-semibold">Notificaciones</div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm font-semibold text-white">Notificaciones</div>
                 <button
-                  className="text-xs rounded-lg border border-white/10 bg-white/10 px-2 py-1 hover:bg-white/20"
+                  className="px-2 py-1 text-xs border rounded-lg border-white/10 bg-white/10 hover:bg-white/20"
                   onClick={() => setOpen(false)}
                 >
                   Cerrar
@@ -135,10 +135,10 @@ function NotifItem({ n, onSeen, onApprove, onReject }) {
 
   const color =
     n.status === "approved"
-      ? "border-emerald-400/40 bg-emerald-500/15"
+      ? "border-emerald-400/40 bg-emerald-500/40"
       : n.status === "rejected"
-      ? "border-rose-400/40 bg-rose-500/15"
-      : "border-white/10 bg-white/5";
+      ? "border-rose-400/40 bg-rose-500/40"
+      : "border-white/10 bg-white/20";
 
   return (
     <div className={clsx("rounded-xl border p-3", color)}>
@@ -165,8 +165,8 @@ function NotifItem({ n, onSeen, onApprove, onReject }) {
               })}
             </span>
           </div>
-          <div className="mt-1 text-sm font-semibold truncate">{n.title}</div>
-          <div className="text-xs text-slate-300 truncate">{n.message}</div>
+          <div className="mt-1 text-sm font-semibold text-white truncate">{n.title}</div>
+          <div className="text-xs truncate text-slate-300">{n.message}</div>
         </div>
 
         <div className="shrink-0">
@@ -187,9 +187,9 @@ function NotifItem({ n, onSeen, onApprove, onReject }) {
       </div>
 
       {/* Acciones */}
-      <div className="mt-2 flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-2">
         <button
-          className="rounded-lg border border-white/10 bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+          className="px-2 py-1 text-xs border rounded-lg border-white/10 bg-white/10 hover:bg-white/20"
           onClick={() => setOpen((v) => !v)}
         >
           {open ? "Ocultar" : "Ver"}
@@ -208,7 +208,7 @@ function NotifItem({ n, onSeen, onApprove, onReject }) {
 
       {/* Detalle */}
       {open && (
-        <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2 text-xs">
+        <div className="p-2 mt-2 text-xs border rounded-lg border-white/10 bg-white/5">
           {n.type === "vacation" ? (
             <div className="space-y-1">
               <Row k="Trabajador" v={n.payload.employee} />
