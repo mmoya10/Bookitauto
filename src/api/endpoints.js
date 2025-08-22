@@ -1,0 +1,17 @@
+export const ENDPOINTS = {
+  auth: { login: '/auth/login', me: '/auth/me' },
+  business: { motivation: '/business/motivation', stats: '/business/stats' },
+  users: '/users',
+  staff: '/staff',
+  calendars: '/calendars',
+  calendarGroups: '/calendar-groups',
+  appointments: '/appointments',
+  absences: '/absences',
+  reports: '/reports',
+  billing: { plan: '/billing/plan', invoices: '/billing/invoices' },
+  cash: { today: '/cash/today', history: '/cash/history', movements: '/cash/movements' },
+  stock: { products: '/stock/products', movements: '/stock/movements', alerts: '/stock/alerts' },
+  products: '/products',
+  contacts: '/contacts',
+  spaces: '/spaces',
+};
