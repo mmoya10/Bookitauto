@@ -34,26 +34,23 @@ export default function LoginPage() {
                       bg-[radial-gradient(800px_300px_at_80%_0%,rgba(124,58,237,0.15),transparent_40%),radial-gradient(800px_300px_at_0%_100%,rgba(34,211,238,0.15),transparent_40%)]" />
 
       <div className="relative w-[min(92vw,420px)] rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_40px_rgba(0,0,0,0.35)] p-7">
-        {/* Brand */}
+       {/* Brand */}
         <div className="mb-2 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 
-                          bg-[linear-gradient(135deg,rgba(124,58,237,0.2),rgba(34,211,238,0.2))]">
-            <svg viewBox="0 0 48 48" width="28" height="28" aria-hidden>
-              <defs>
-                <linearGradient id="g" x1="0" x2="1">
-                  <stop offset="0" stopColor="#7c3aed"/>
-                  <stop offset="1" stopColor="#22d3ee"/>
-                </linearGradient>
-              </defs>
-              <circle cx="24" cy="24" r="22" fill="url(#g)" opacity="0.2"/>
-              <path d="M12 30c6-2 10-7 12-16 2 9 6 14 12 16-5 2-9 3-12 3s-7-1-12-3z" fill="url(#g)"/>
-            </svg>
+          <div className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/80 overflow-hidden">
+            {/* usa el .ico que tienes en public/ */}
+            <img
+              src={`${process.env.PUBLIC_URL}/favicon.ico`} // también vale "/favicon.ico"
+              alt="Bookitauto"
+              className="h-7 w-7 object-contain"
+              draggable="false"
+            />
           </div>
           <div>
-            <h1 className="m-0 text-xl font-semibold tracking-wide">Mi Pelu</h1>
+            <h1 className="m-0 text-xl font-semibold tracking-wide">Bookitauto</h1>
             <p className="m-0 text-xs text-slate-400">Panel de gestión</p>
           </div>
         </div>
+
 
         {/* Form */}
         <form className="mt-2 grid gap-3.5" onSubmit={handleSubmit(onSubmit)} noValidate>
@@ -137,7 +134,7 @@ export default function LoginPage() {
 
           {/* Submit */}
           <button
-            className="mt-1 w-full rounded-xl bg-[linear-gradient(90deg,#7c3aed,#22d3ee)] px-4 py-3 font-semibold tracking-wide text-[#0b1020] transition 
+            className="mt-1 w-full rounded-xl bg-[linear-gradient(90deg,#7c3aed,#22d3ee)] px-4 py-3 font-semibold tracking-wide text-[#ffffff] transition 
                        active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60"
             disabled={loading}
           >
@@ -150,7 +147,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-4 flex justify-between text-xs text-slate-400">
-          <span>© {new Date().getFullYear()} Mi Pelu</span>
+          <span>© {new Date().getFullYear()} Bookitauto</span>
           <span>v0.1</span>
         </div>
       </div>
