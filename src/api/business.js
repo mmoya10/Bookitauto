@@ -2,6 +2,37 @@
 // Mock en memoria con datos de prueba y "latencia" artificial
 
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+export const BUSINESS_TYPES = [
+  { value: "peluqueria", label: "Peluquería" },
+  { value: "fisioterapia", label: "Fisioterapia" },
+  { value: "estetica", label: "Estética" },
+  { value: "barberia", label: "Barbería" },
+  { value: "spa", label: "Spa" },
+];
+
+export const LANGUAGES = [
+  { value: "es", label: "Español" },
+  { value: "en", label: "English" },
+  { value: "fr", label: "Français" },
+  { value: "pt", label: "Português" },
+];
+
+export const CURRENCIES = [
+  { value: "EUR", label: "EUR (€)" },
+  { value: "USD", label: "USD ($)" },
+  { value: "GBP", label: "GBP (£)" },
+];
+
+export const TIMEZONES = [
+  "Europe/Madrid",
+  "UTC",
+  "Europe/Lisbon",
+  "Europe/Paris",
+  "America/Bogota",
+  "America/Mexico_City",
+  "America/Argentina/Buenos_Aires",
+];
+
 const rid = () => Math.random().toString(36).slice(2, 10);
 
 let memBusiness = {
@@ -12,19 +43,26 @@ let memBusiness = {
   cif: "B12345678",
   email: "info@glam.com",
   telefono: "+34 600 123 123",
+
+  // ✅ NUEVOS CAMPOS
+  web: "https://glam.com",
+  tipo: "peluqueria",     // value de BUSINESS_TYPES
+  idioma: "es",           // value de LANGUAGES
+  currency: "EUR",        // value de CURRENCIES
+  timezone: "Europe/Madrid",
+
   branchMode: true,
   notifications: {
     channels: { email: true, sms: false, whatsapp: false },
     events: { confirmation: true, cancellation: true, rescheduled: true },
-    // horas ANTES de la cita (positivas) -> 24h = 1 día, 3h = 3 horas
     reminders: [
       { id: rid(), hoursBefore: 24 },
       { id: rid(), hoursBefore: 3 },
     ],
-    // horas DESPUÉS de la cita para pedir reseña
-    review: { hoursAfter: 4, followup: true }, // followup = 2º correo si no hay reseña
+    review: { hoursAfter: 4, followup: true },
   },
 };
+
 
 let memBranches = [
   {

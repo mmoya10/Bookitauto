@@ -31,7 +31,6 @@ export const holidays = [
 ];
 
 /* ====== Generador de citas semana 18–22 Agosto 2025 ====== */
-/* ====== Generador de citas semana 18–22 Agosto 2025 ====== */
 function generateWeekAppointments() {
   const days = ['2025-08-18','2025-08-19','2025-08-20','2025-08-21','2025-08-22']; // L-V
   const blocks = [
