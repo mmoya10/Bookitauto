@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  fetchSpacesEnabled,
-  setSpacesEnabled,
   fetchSpaces,
   createSpace,
   updateSpace,
   deleteSpaces,
 } from "../../api/spaces";
+import SelectableGallery from "../../components/common/SelectableGallery";
+
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
-import ViewToggle from "../../components/common/ToggleView";
 import Portal from "../../components/common/Portal";
 import clsx from "clsx";
 
@@ -19,46 +18,18 @@ const glassCard =
 
 /* =================== Página =================== */
 export default function SpacesPage() {
-  const qc = useQueryClient();
-
-  // ¿feature activada?
-  const { data: enabledResp } = useQuery({ queryKey: ["spaces-enabled"], queryFn: fetchSpacesEnabled });
-  const enabled = !!enabledResp?.enabled;
-
-  const mEnable = useMutation({
-    mutationFn: ({ enabled }) => setSpacesEnabled({ enabled }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["spaces-enabled"] }),
-  });
-
   return (
     <div className="space-y-6 text-zinc-100">
       <header>
-        <h1 className="text-xl font-semibold">Espacios</h1>
-        <p className="text-sm text-slate-300">Activa y gestiona tus espacios físicos.</p>
+        <h1 className="text-xl font-semibold">Espacios &amp; Equipos</h1>
+        <p className="text-sm text-slate-300">Gestiona salas, cabinas, puestos y equipos.</p>
       </header>
 
-      {!enabled ? (
-        <section className={clsx(glassCard, "p-5")}>
-          <div className="mb-2">
-            <h2 className="text-base font-semibold">Funcionalidad desactivada</h2>
-            <p className="text-sm text-slate-300">
-              Activa “Espacios” para organizar y reservar salas, cabinas o zonas de trabajo.
-            </p>
-          </div>
-          <Button
-            variant="primary"
-            onClick={() => mEnable.mutate({ enabled: true })}
-            disabled={mEnable.isPending}
-          >
-            {mEnable.isPending ? "Activando…" : "Activar Espacios"}
-          </Button>
-        </section>
-      ) : (
-        <EnabledSpaces />
-      )}
+      <EnabledSpaces />
     </div>
   );
 }
+
 
 /* =================== Contenido cuando está habilitado =================== */
 function EnabledSpaces() {
@@ -66,7 +37,6 @@ function EnabledSpaces() {
 
   const [q, setQ] = useState("");
   const [view, setView] = useState("cards"); // 'cards' | 'table'
-  const [selected, setSelected] = useState([]); // ids seleccionados para eliminar
   const [modal, setModal] = useState(null); // { mode: 'create'|'edit', space? }
 
   // datos
@@ -91,56 +61,27 @@ function EnabledSpaces() {
     },
   });
   const mDelete = useMutation({
-    mutationFn: () => deleteSpaces(selected),
+    mutationFn: (ids) => deleteSpaces(ids),
     onSuccess: () => {
-      setSelected([]);
       qc.invalidateQueries({ queryKey: ["spaces"] });
     },
   });
 
-  const allChecked = useMemo(() => {
-    const ids = (spaces ?? []).map((s) => s.id);
-    return ids.length > 0 && selected.length === ids.length;
-  }, [spaces, selected]);
-
-  const toggleAll = () => {
-    if (!spaces?.length) return;
-    if (allChecked) setSelected([]);
-    else setSelected(spaces.map((s) => s.id));
-  };
-
-  const toggleOne = (id) => {
-    setSelected((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
-  };
-
   return (
     <>
-      {/* Filtros */}
+      {/* Filtros + CTA nuevo */}
       <section className={clsx(glassCard, "p-4")}>
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
           <div className="grid gap-1.5">
             <span className="text-xs text-slate-300">Buscar</span>
-            <Input placeholder="Buscar por nombre…" value={q} onChange={(e)=>setQ(e.target.value)} />
+            <Input
+              placeholder="Buscar por nombre…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
           </div>
 
-          <div className="grid gap-1.5">
-            <span className="text-xs text-slate-300">Vista</span>
-            <ViewToggle value={view} onChange={setView} />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="danger"
-              disabled={!selected.length || mDelete.isPending}
-              onClick={() => {
-                if (!selected.length) return;
-                if (window.confirm(`¿Eliminar ${selected.length} espacio(s)?`)) {
-                  mDelete.mutate();
-                }
-              }}
-            >
-              {mDelete.isPending ? "Eliminando…" : "Eliminar seleccionados"}
-            </Button>
+          <div className="flex justify-end gap-2">
             <Button
               variant="primary"
               onClick={() =>
@@ -150,155 +91,87 @@ function EnabledSpaces() {
                 })
               }
             >
-              + Añadir espacio
+              + Añadir espacio/equipo
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Lista */}
-      <section className={clsx(glassCard, "p-4")}>
-        {view === "cards" ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {(spaces ?? []).map((s) => (
-              <div key={s.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="mt-1 size-4 rounded border-white/20 bg-white/10"
-                    checked={selected.includes(s.id)}
-                    onChange={() => toggleOne(s.id)}
+      {/* Listado con SelectableGallery */}
+      <SelectableGallery
+        items={spaces ?? []}
+        view={view}
+        onViewChange={setView}
+        toCard={(s) => ({
+          id: s.id,
+          title: s.name,
+          subtitle: s.description,
+          imageUrl: s.imageUrl,
+          onEdit: () => setModal({ mode: "edit", space: s }),
+          actionsNode: (
+            <>
+              <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full border border-white/10 bg-white/10">
+                Capacidad: <b className="ml-1">{s.capacity ?? 0}</b>
+              </span>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  if (window.confirm("¿Eliminar este elemento?")) {
+                    mDelete.mutate([s.id]);
+                  }
+                }}
+              >
+                Eliminar
+              </Button>
+            </>
+          ),
+        })}
+        toTable={{
+          getId: (s) => s.id,
+          onEdit: (s) => setModal({ mode: "edit", space: s }),
+          columns: [
+            {
+              key: "main",
+              label: "Espacio / Equipo",
+              render: (s) => (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={s.imageUrl}
+                    alt=""
+                    className="object-cover w-16 h-10 border rounded-md border-white/10"
                   />
-                  <div className="min-w-0">
-                    <img
-                      src={s.imageUrl}
-                      alt=""
-                      className="mb-2 h-28 w-full rounded-lg object-cover border border-white/10"
-                    />
-                    <div className="text-sm font-semibold truncate">{s.name}</div>
-                    <div className="text-xs text-slate-300 truncate">{s.description}</div>
-                    <div className="mt-1 text-xs">
-                      Capacidad: <b>{s.capacity}</b>
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setModal({ mode: "edit", space: s })}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => {
-                          setSelected([s.id]);
-                          if (window.confirm("¿Eliminar este espacio?")) {
-                            deleteSpaces([s.id]).then(() => {
-                              // invalidamos lista
-                              const ev = new Event("invalidate-spaces");
-                              window.dispatchEvent(ev);
-                            });
-                          }
-                        }}
-                      >
-                        Eliminar
-                      </Button>
-                    </div>
+                  <div>
+                    <div className="font-medium">{s.name}</div>
+                    <div className="text-xs text-slate-300">{s.description}</div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {!spaces?.length && (
-              <div className="text-sm text-slate-300">No hay espacios.</div>
-            )}
-          </div>
-        ) : (
-          <div className="overflow-auto rounded-xl border border-white/10 bg-white/5">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-slate-300">
-                  <th className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      className="size-4 rounded border-white/20 bg-white/10"
-                      checked={allChecked}
-                      onChange={toggleAll}
-                    />
-                  </th>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Descripción</th>
-                  <th className="px-3 py-2">Capacidad</th>
-                  <th className="px-3 py-2">Imagen</th>
-                  <th className="px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(spaces ?? []).map((s) => (
-                  <tr key={s.id} className="border-t border-white/10">
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        className="size-4 rounded border-white/20 bg-white/10"
-                        checked={selected.includes(s.id)}
-                        onChange={() => toggleOne(s.id)}
-                      />
-                    </td>
-                    <td className="px-3 py-2">{s.name}</td>
-                    <td className="px-3 py-2">{s.description}</td>
-                    <td className="px-3 py-2">{s.capacity}</td>
-                    <td className="px-3 py-2">
-                      <img
-                        src={s.imageUrl}
-                        alt=""
-                        className="h-10 w-16 rounded-md object-cover border border-white/10"
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setModal({ mode: "edit", space: s })}>
-                          Editar
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => {
-                            setSelected([s.id]);
-                            if (window.confirm("¿Eliminar este espacio?")) {
-                              deleteSpaces([s.id]).then(() => {
-                                const ev = new Event("invalidate-spaces");
-                                window.dispatchEvent(ev);
-                              });
-                            }
-                          }}
-                        >
-                          Eliminar
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!spaces?.length && (
-                  <tr>
-                    <td className="px-3 py-3 text-slate-300" colSpan={6}>
-                      No hay espacios.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+              ),
+            },
+            {
+              key: "cap",
+              label: "Capacidad",
+              render: (s) => <span>{s.capacity ?? 0}</span>,
+            },
+          ],
+        }}
+        onDeleteSelected={(ids) => {
+          if (!ids?.length) return;
+          if (window.confirm(`¿Eliminar ${ids.length} elemento(s)?`)) {
+            mDelete.mutate(ids);
+          }
+        }}
+        className="p-4"
+      />
 
       {/* Modal crear/editar */}
       {modal && (
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,620px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">
-                  {modal.mode === "edit" ? "Editar espacio" : "Nuevo espacio"}
+                  {modal.mode === "edit" ? "Editar elemento" : "Nuevo elemento"}
                 </h3>
                 <Button variant="ghost" size="sm" onClick={() => setModal(null)}>
                   Cerrar
@@ -316,12 +189,10 @@ function EnabledSpaces() {
           </div>
         </Portal>
       )}
-
-      {/* Pequeño listener para invalidar cuando borro desde card */}
-      <InvalidateOnEvent event="invalidate-spaces" queryKey={["spaces"]} />
     </>
   );
 }
+
 
 /* =================== Subcomponentes =================== */
 
@@ -414,7 +285,7 @@ function SpaceForm({ space, submitting, onSubmit }) {
           <img
             src={form.imageUrl}
             alt="preview"
-            className="mt-2 h-28 w-full rounded-lg object-cover border border-white/10"
+            className="object-cover w-full mt-2 border rounded-lg h-28 border-white/10"
           />
         )}
       </div>
@@ -435,14 +306,4 @@ function Field({ label, children }) {
       {children}
     </label>
   );
-}
-
-function InvalidateOnEvent({ event, queryKey }) {
-  const qc = useQueryClient();
-  useEffect(() => {
-    const handler = () => qc.invalidateQueries({ queryKey });
-    window.addEventListener(event, handler);
-    return () => window.removeEventListener(event, handler);
-  }, [event, qc, queryKey]);
-  return null;
 }

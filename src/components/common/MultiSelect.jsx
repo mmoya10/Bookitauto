@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
+import { createPortal } from "react-dom";
 
 export default function MultiSelect({
   items,                // [{ id, label }]
@@ -12,10 +13,13 @@ export default function MultiSelect({
   searchable = true,
   maxHeight = 220,
   disabled = false,
+  portal = true,
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const btnRef = useRef(null);
+  const [popRect, setPopRect] = useState(null); // {left, top, width, bottom}
+
   const popRef = useRef(null);
 
   const allIds = useMemo(() => items.map(i => i.id), [items]);
@@ -38,6 +42,27 @@ export default function MultiSelect({
     }
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+    useEffect(() => {
+    if (!open) return;
+    const updatePos = () => {
+      const btn = btnRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      setPopRect({
+        left: r.left,
+        top: r.bottom + 8,  // 8px separación
+        width: r.width,
+      });
+    };
+    updatePos();
+    window.addEventListener("scroll", updatePos, true);
+    window.addEventListener("resize", updatePos);
+    return () => {
+      window.removeEventListener("scroll", updatePos, true);
+      window.removeEventListener("resize", updatePos);
+    };
   }, [open]);
 
   // Toggle 1 id
@@ -84,15 +109,23 @@ export default function MultiSelect({
         </svg>
       </button>
 
-      {open && (
-        <div
-          ref={popRef}
-          className={clsx(
-            "absolute z-50 mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020]/95 backdrop-blur",
-            "shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-          )}
-          role="listbox"
-        >
+     {open && (portal
+        ? createPortal(
+            <div
+              ref={popRef}
+              className={clsx(
+                "rounded-xl border border-white/10 bg-[#0b1020]/95 backdrop-blur",
+                "shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+              )}
+              role="listbox"
+              style={{
+                position: "fixed",
+                zIndex: 9999,
+                left: popRect?.left ?? 0,
+                top: popRect?.top ?? 0,
+                width: popRect?.width ?? "auto",
+              }}
+            >
           {searchable && (
             <div className="p-2 border-b border-white/10">
               <input
@@ -173,7 +206,21 @@ export default function MultiSelect({
               </button>
             )}
           </div>
-        </div>
+       </div>,
+            document.body
+          )
+        : (
+          <div
+            ref={popRef}
+            className={clsx(
+              "absolute z-[9999] mt-2 w-full rounded-xl border border-white/10 bg-[#0b1020]/95 backdrop-blur",
+              "shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+            )}
+            role="listbox"
+          >
+            {/* (contenido idéntico al de arriba si algún día desactivas portal) */}
+          </div>
+        )
       )}
     </div>
   );

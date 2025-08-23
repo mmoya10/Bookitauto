@@ -21,6 +21,8 @@ import SpacesPage from './pages/Spaces/SpacesPage';
 import LoginPage from './pages/Auth/LoginPage';
 import Marketing from "./pages/Marketing/Marketing";
 import Negocio from "./pages/Negocio/Negocio";
+import BookingSitePublic from "./pages/Booking/BookingSitePublic";
+
 
 export default function App() {
   return (
@@ -30,6 +32,8 @@ export default function App() {
           <Routes>
             {/* pública */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/booking/:bizSlug/:branchSlug/:siteSlug" element={<BookingSitePublic />} />
+
 
             {/* protegidas */}
             <Route element={<RequireAuth><AppLayout /></RequireAuth>}>

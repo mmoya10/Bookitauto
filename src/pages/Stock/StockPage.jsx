@@ -119,7 +119,7 @@ export default function StockPage() {
             {lowStock.map((p) => (
               <div key={p.id} className="min-w-[240px] rounded-xl border border-red-400/30 bg-red-500/10 p-3">
                 <div className="flex items-center gap-3">
-                  <img src={p.imageUrl} alt="" className="h-12 w-16 rounded-lg object-cover border border-white/10" />
+                  <img src={p.imageUrl} alt="" className="object-cover w-16 h-12 border rounded-lg border-white/10" />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold">{p.name}</div>
                     <div className="text-xs text-slate-300">
@@ -131,8 +131,8 @@ export default function StockPage() {
             ))}
           </HScroll>
         ) : (
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-4 flex items-center gap-3">
-            <div className="grid place-items-center rounded-lg border border-white/10 bg-white/10 w-8 h-8">
+          <div className="flex items-center gap-3 p-4 border rounded-xl border-emerald-400/30 bg-emerald-500/10">
+            <div className="grid w-8 h-8 border rounded-lg place-items-center border-white/10 bg-white/10">
               <IcTick />
             </div>
             <div>
@@ -145,7 +145,7 @@ export default function StockPage() {
 
       {/* 2) Carrusel de productos + buscador */}
       <section className={clsx(glassCard, "p-4")}>
-        <div className="mb-2 flex items-end justify-between gap-3">
+        <div className="flex items-end justify-between gap-3 mb-2">
           <div>
             <h2 className="text-base font-semibold">Productos</h2>
             <p className="text-xs text-slate-300">Selecciona un producto para ver sus movimientos.</p>
@@ -170,7 +170,7 @@ export default function StockPage() {
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <img src={p.imageUrl} alt="" className="h-12 w-16 rounded-lg object-cover border border-white/10" />
+                  <img src={p.imageUrl} alt="" className="object-cover w-16 h-12 border rounded-lg border-white/10" />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold truncate">{p.name}</div>
                     <div className="text-xs text-slate-200">Stock: <b>{p.stock}</b></div>
@@ -190,7 +190,7 @@ export default function StockPage() {
 
       {/* 3) Movimientos */}
       <section className={clsx(glassCard, "p-4")}>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="text-base font-semibold">
               {selectedId ? "Movimientos del mes" : "Últimos movimientos"}
@@ -232,7 +232,7 @@ export default function StockPage() {
           </div>
         </div>
 
-        <div className="overflow-auto rounded-xl border border-white/10 bg-white/5">
+        <div className="overflow-auto border rounded-xl border-white/10 bg-white/5">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-300">
@@ -284,7 +284,7 @@ export default function StockPage() {
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,640px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">
                   {modal.mode === "edit" ? "Editar movimiento" : "Nuevo movimiento"}
                 </h3>
@@ -418,7 +418,7 @@ function MovementForm({ movement, products, onSubmit, submitting }) {
         />
       </div>
 
-      <div className="mt-1 flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-1">
         <Button variant="primary" type="submit" disabled={submitting}>
           {submitting ? "Guardando…" : form.id ? "Guardar cambios" : "Crear movimiento"}
         </Button>
@@ -427,40 +427,89 @@ function MovementForm({ movement, products, onSubmit, submitting }) {
   );
 }
 
-/* ===== Carousel reutilizable con flechas ===== */
+/* ===== Carousel reutilizable con flechas (auto-oculta si no son necesarias) ===== */
 function HScroll({ children }) {
   const ref = useRef(null);
-  const scrollBy = (dir) => {
+  const [showLeft, setShowLeft] = useState(false);
+  const [showRight, setShowRight] = useState(false);
+
+  const updateArrows = () => {
+    const el = ref.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const maxLeft = scrollWidth - clientWidth;
+    setShowLeft(scrollLeft > 2);               // margen de tolerancia
+    setShowRight(scrollLeft < maxLeft - 2);    // margen de tolerancia
+  };
+
+  const scrollByDir = (dir) => {
     const el = ref.current;
     if (!el) return;
     el.scrollBy({ left: dir * Math.round(el.clientWidth * 0.9), behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    updateArrows();
+
+    // Recalcular al hacer scroll y en resize
+    const onScroll = () => updateArrows();
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    // ResizeObserver para cambios de layout / children
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+
+    // También escuchar resize ventana
+    window.addEventListener("resize", updateArrows);
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+      window.removeEventListener("resize", updateArrows);
+    };
+  }, []);
+
+  // Solo mostramos las flechas si realmente hay overflow horizontal
+  const showAnyArrow = showLeft || showRight;
+
   return (
     <div className="relative">
-      <div ref={ref} className="flex gap-3 overflow-x-auto pb-2 pr-1 snap-x">
+      <div
+        ref={ref}
+        className="flex gap-3 pb-2 pr-1 overflow-x-auto no-scrollbar snap-x"
+      >
         {children}
       </div>
-      <button
-        type="button"
-        onClick={() => scrollBy(-1)}
-        className="absolute left-2 top-1/2 -translate-y-1/2 grid place-items-center rounded-full border border-white/10 bg-white/10 w-8 h-8 hover:bg-white/20"
-        aria-label="Scroll left"
-        title="Anterior"
-      >
-        <IcChevronL />
-      </button>
-      <button
-        type="button"
-        onClick={() => scrollBy(1)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 grid place-items-center rounded-full border border-white/10 bg-white/10 w-8 h-8 hover:bg-white/20"
-        aria-label="Scroll right"
-        title="Siguiente"
-      >
-        <IcChevronR />
-      </button>
+
+      {showAnyArrow && showLeft && (
+        <button
+          type="button"
+          onClick={() => scrollByDir(-1)}
+          className="absolute grid w-8 h-8 -translate-y-1/2 border rounded-full left-2 top-1/2 place-items-center border-white/10 bg-black/40 hover:bg-white/20"
+          aria-label="Scroll left"
+          title="Anterior"
+        >
+          <IcChevronL />
+        </button>
+      )}
+
+      {showAnyArrow && showRight && (
+        <button
+          type="button"
+          onClick={() => scrollByDir(1)}
+          className="absolute grid w-8 h-8 -translate-y-1/2 border rounded-full right-2 top-1/2 place-items-center border-white/10 bg-black/40 hover:bg-white/20"
+          aria-label="Scroll right"
+          title="Siguiente"
+        >
+          <IcChevronR />
+        </button>
+      )}
     </div>
   );
 }
+
 
 /* ===== Utils fecha ===== */
 function toLocalInput(d) {

@@ -3,42 +3,64 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const todayISO = () => new Date().toISOString();
 
 let subscription = {
-  planId: "pro",
-  planName: "Pro",
-  priceMonthly: 29,
+  model: "per_unit", // per_unit = por uso (sucursal + empleado)
   currency: "EUR",
   cycle: "monthly",
   status: "active", // active | past_due | canceled
   nextBillingDate: "2025-09-01",
+
+  // precios unitarios
+  unitPrices: {
+    branch: 9.9,   // €/sucursal
+    staff: 8.9,    // €/empleado
+  },
+
+  // contadores actuales (ejemplo solicitado: 2 y 2)
+  counts: {
+    branches: 2,
+    staff: 2,
+  },
 };
 
-const plans = [
-  { id: "basic", name: "Básico", priceMonthly: 9, currency: "EUR" },
-  { id: "pro", name: "Pro", priceMonthly: 29, currency: "EUR" },
-  { id: "business", name: "Business", priceMonthly: 59, currency: "EUR" },
-];
+
+
 
 // facturas de ejemplo últimos meses
 const genInvoices = () => {
   const arr = [];
   const now = new Date("2025-08-20T10:00:00Z");
+
+  const amountFor = (counts, unitPrices) =>
+    Number(counts.branches) * Number(unitPrices.branch) +
+    Number(counts.staff) * Number(unitPrices.staff);
+
   for (let i = 0; i < 8; i++) {
     const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
     const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i + 1, 0));
     const id = `inv-${from.getUTCFullYear()}-${String(from.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    const amount = amountFor(subscription.counts, subscription.unitPrices);
+
     arr.push({
       id,
       number: `F-${from.getUTCFullYear()}-${String(from.getUTCMonth() + 1).padStart(2, "0")}-${String(1000 + i)}`,
       date: to.toISOString(),
       periodFrom: from.toISOString(),
       periodTo: to.toISOString(),
-      amount: subscription.priceMonthly,
+      amount,
       currency: "EUR",
-      status: i === 0 ? "pending" : "paid", // la más reciente "pending"
+      status: i === 0 ? "pending" : "paid",
+      // guardamos meta para vista/descarga
+      meta: {
+        model: subscription.model,
+        unitPrices: { ...subscription.unitPrices },
+        counts: { ...subscription.counts },
+      },
     });
   }
   return arr;
 };
+
 let invoices = genInvoices();
 
 /* ========= API ========= */
@@ -48,19 +70,14 @@ export async function fetchSubscription() {
 }
 export async function fetchPlans() {
   await sleep(80);
-  return plans.slice();
+  return [];
 }
-export async function updateSubscription({ planId }) {
-  await sleep(150);
-  const p = plans.find((x) => x.id === planId);
-  if (!p) throw new Error("Plan no encontrado");
-  subscription.planId = p.id;
-  subscription.planName = p.name;
-  subscription.priceMonthly = p.priceMonthly;
-  // generar a partir de ahora nuevas facturas con nuevo precio (dejamos mock simple)
-  invoices = genInvoices();
-  return { ok: true, subscription: { ...subscription } };
+export async function updateSubscription() {
+  await sleep(100);
+  throw new Error("El modelo actual es por uso (sucursales + empleados). No hay planes.");
 }
+
+
 export async function requestCancellation({ reason, details }) {
   await sleep(200);
   // no cancelamos automáticamente; devolvemos ticket simulado
@@ -80,16 +97,20 @@ export async function fetchInvoiceFile(id) {
   await sleep(150);
   const inv = invoices.find((i) => i.id === id);
   if (!inv) throw new Error("Factura no encontrada");
-  // Contenido ficticio (podrías generar PDF en backend real)
-  const text = [
+
+  const { counts, unitPrices } = inv.meta ?? { counts: subscription.counts, unitPrices: subscription.unitPrices };
+  const lines = [
     `Factura: ${inv.number}`,
     `Fecha: ${new Date(inv.date).toISOString().slice(0, 10)}`,
     `Periodo: ${new Date(inv.periodFrom).toISOString().slice(0, 10)} a ${new Date(inv.periodTo).toISOString().slice(0, 10)}`,
-    `Importe: ${inv.amount.toFixed(2)} ${inv.currency}`,
-    `Estado: ${inv.status}`,
     "",
-    "Detalle:",
-    `- Suscripción ${subscription.planName} (${subscription.planId})`,
-  ].join("\n");
-  return { filename: `${inv.number}.txt`, mime: "text/plain", content: text };
+    "Detalle de suscripción (modelo por uso):",
+    `- Sucursales: ${counts.branches} x ${unitPrices.branch.toFixed(2)} EUR = ${(counts.branches * unitPrices.branch).toFixed(2)} EUR`,
+    `- Empleados: ${counts.staff} x ${unitPrices.staff.toFixed(2)} EUR = ${(counts.staff * unitPrices.staff).toFixed(2)} EUR`,
+    `Total: ${inv.amount.toFixed(2)} ${inv.currency}`,
+    `Estado: ${inv.status}`,
+  ];
+
+  return { filename: `${inv.number}.txt`, mime: "text/plain", content: lines.join("\n") };
 }
+

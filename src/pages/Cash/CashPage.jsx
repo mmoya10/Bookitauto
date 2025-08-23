@@ -112,42 +112,45 @@ export default function CashPage() {
       </header>
 
       {/* Navegación de días */}
-      <section className={clsx(glassCard, "p-4")}>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold">{prettyDay(day)}</div>
-            <div className="text-xs text-slate-300">
-              Estado:{" "}
-              {box?.isOpen ? (
-                box?.isClosed ? (
-                  <span className="rounded-full border border-emerald-400/40 bg-emerald-500/20 text-emerald-100 px-2 py-0.5 text-[11px]">
-                    Cerrada
-                  </span>
-                ) : (
-                  <span className="rounded-full border border-cyan-400/40 bg-cyan-500/20 text-cyan-100 px-2 py-0.5 text-[11px]">
-                    Abierta
-                  </span>
-                )
-              ) : (
-                <span className="rounded-full border border-yellow-400/40 bg-yellow-500/20 text-yellow-100 px-2 py-0.5 text-[11px]">
-                  No abierta
-                </span>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setDay((d) => addDays(d, -1))}>
-              ← Día anterior
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setDay(new Date())}>
-              Hoy
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setDay((d) => addDays(d, +1))}>
-              Día siguiente →
-            </Button>
-          </div>
-        </div>
-      </section>
+      <section className={clsx(glassCard, "p-6 text-center")}>
+  <div className="space-y-3">
+    {/* Fecha en grande */}
+    <div className="text-2xl font-bold">{prettyDay(day)}</div>
+
+    {/* Estado en grande y centrado */}
+    <div>
+      {box?.isOpen ? (
+        box?.isClosed ? (
+          <span className="inline-block px-4 py-1 text-lg font-medium border rounded-full border-emerald-400/40 bg-emerald-500/20 text-emerald-100">
+            Cerrada
+          </span>
+        ) : (
+          <span className="inline-block px-4 py-1 text-lg font-medium border rounded-full border-cyan-400/40 bg-cyan-500/20 text-cyan-100">
+            Abierta
+          </span>
+        )
+      ) : (
+        <span className="inline-block px-4 py-1 text-lg font-medium text-yellow-100 border rounded-full border-yellow-400/40 bg-yellow-500/20">
+          No abierta
+        </span>
+      )}
+    </div>
+
+    {/* Navegación de días */}
+    <div className="flex justify-center gap-3 pt-2">
+      <Button variant="ghost" onClick={() => setDay((d) => addDays(d, -1))}>
+        ← Día anterior
+      </Button>
+      <Button variant="ghost" onClick={() => setDay(new Date())}>
+        Hoy
+      </Button>
+      <Button variant="ghost" onClick={() => setDay((d) => addDays(d, +1))}>
+        Día siguiente →
+      </Button>
+    </div>
+  </div>
+</section>
+
 
       {/* 1) Cabecera de caja (apertura / estado / cierre / reabrir) */}
       <section className={clsx(glassCard, "p-4")}>
@@ -206,7 +209,7 @@ export default function CashPage() {
 
       {/* 2) Movimientos del día */}
       <section className={clsx(glassCard, "p-4")}>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <div>
             <h2 className="text-base font-semibold">Movimientos</h2>
             <p className="text-xs text-slate-300">
@@ -237,7 +240,7 @@ export default function CashPage() {
           </Button>
         </div>
 
-        <div className="overflow-auto rounded-xl border border-white/10 bg-white/5">
+        <div className="overflow-auto border rounded-xl border-white/10 bg-white/5">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-300">
@@ -276,7 +279,7 @@ export default function CashPage() {
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">
                   {mvModal.mode === "edit" ? "Editar movimiento" : "Nuevo movimiento"}
                 </h3>
@@ -303,7 +306,7 @@ export default function CashPage() {
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">Cerrar caja</h3>
                 <Button variant="ghost" size="sm" onClick={() => setCloseModal(null)}>
                   Cerrar
@@ -396,7 +399,7 @@ function ClosedBox({ box, onReopen, onAdd }) {
 
 function Stat({ label, value }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="p-3 border rounded-xl border-white/10 bg-white/5">
       <div className="text-xs text-slate-300">{label}</div>
       <div className="text-lg font-semibold">{value}</div>
     </div>
@@ -549,7 +552,7 @@ function CloseForm({ values, onSubmit, submitting }) {
       }}
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="p-3 border rounded-xl border-white/10 bg-white/5">
           <div className="text-xs text-slate-300">Total esperado</div>
           <div className="text-lg font-semibold">{fmtEUR(values.expected)}</div>
         </div>

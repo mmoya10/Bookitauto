@@ -10,17 +10,12 @@ import Toggle from "../../components/common/Toggle";
 import {
   fetchMarketing,          // GET { couponsEnabled, packsEnabled, (marketingEnabled si existe, se ignora) }
   setCouponsEnabled,       // POST boolean -> {ok:true}
-  setPacksEnabled,         // POST boolean -> {ok:true}
 
   fetchCoupons,            // GET -> Coupon[]
   createCoupon,            // POST payload -> Coupon
   updateCoupon,            // PUT {id, ...payload} -> Coupon
   deleteCoupon,            // DELETE id -> {ok:true}
 
-  fetchPacks,              // GET -> Pack[]
-  createPack,              // POST payload -> Pack
-  updatePack,              // PUT {id, ...payload} -> Pack
-  deletePack,              // DELETE id -> {ok:true}
 } from "../../api/marketing";
 
 // ====== Estilos comunes ======
@@ -53,10 +48,6 @@ export default function Marketing() {
     mutationFn: setCouponsEnabled,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["marketing:settings"] }),
   });
-  const mSetPacks = useMutation({
-    mutationFn: setPacksEnabled,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["marketing:settings"] }),
-  });
 
   // Listas
   const { data: coupons } = useQuery({
@@ -64,16 +55,11 @@ export default function Marketing() {
     queryFn: fetchCoupons,
     enabled: !!settings?.couponsEnabled,
   });
-  const { data: packs } = useQuery({
-    queryKey: ["marketing:packs"],
-    queryFn: fetchPacks,
-    enabled: !!settings?.packsEnabled,
-  });
+
 
   // Modales
   const [couponModal, setCouponModal] = useState({ open: false, editing: null });
-  const [packModal, setPackModal] = useState({ open: false, editing: null });
-
+  
   if (loadingSettings) {
     return (
       <div className="p-4">
@@ -97,21 +83,12 @@ export default function Marketing() {
             checked={!!settings?.couponsEnabled}
             onChange={(v) => mSetCoupons.mutate(v)}
           />
-
-          {/* Packs */}
-          <Toggle
-            align="left"
-            label="Packs"
-            description="Paquetes promocionales (% off, valor fijo o servicio gratis)"
-            checked={!!settings?.packsEnabled}
-            onChange={(v) => mSetPacks.mutate(v)}
-          />
         </div>
       </div>
 
       {/* Cupones */}
       <section className={clsx(glass, "p-4")}>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center justify-between mb-3">
           <div className={secTitle}>Cupones</div>
           <Button
             onClick={() => setCouponModal({ open: true, editing: null })}
@@ -126,7 +103,7 @@ export default function Marketing() {
         ) : !coupons?.length ? (
           <div className="text-sm text-slate-300">Aún no hay cupones.</div>
         ) : (
-          <div className="overflow-auto rounded-xl border border-white/10">
+          <div className="overflow-auto border rounded-xl border-white/10">
             <table className="min-w-[640px] w-full text-sm">
               <thead className="text-left bg-white/5">
                 <tr>
@@ -173,76 +150,6 @@ export default function Marketing() {
         )}
       </section>
 
-      {/* Packs */}
-      <section className={clsx(glass, "p-4")}>
-        <div className="mb-3 flex items-center justify-between">
-          <div className={secTitle}>Packs</div>
-          <Button
-            onClick={() => setPackModal({ open: true, editing: null })}
-            disabled={!settings?.packsEnabled}
-          >
-            Añadir pack
-          </Button>
-        </div>
-
-        {!settings?.packsEnabled ? (
-          <div className="text-sm text-slate-300">Los packs están desactivados.</div>
-        ) : !packs?.length ? (
-          <div className="text-sm text-slate-300">Aún no hay packs.</div>
-        ) : (
-          <div className="overflow-auto rounded-xl border border-white/10">
-            <table className="min-w-[640px] w-full text-sm">
-              <thead className="text-left bg-white/5">
-                <tr>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Tipo</th>
-                  <th className="px-3 py-2">Valor</th>
-                  <th className="px-3 py-2">Validez</th>
-                  <th className="px-3 py-2">Usuarios</th>
-                  <th className="px-3 py-2 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {packs.map((p) => (
-                  <tr key={p.id} className="border-t border-white/10">
-                    <td className="px-3 py-2">{p.name}</td>
-                    <td className="px-3 py-2 capitalize">
-                      {p.discountType === "service" ? "servicio" : p.discountType}
-                    </td>
-                    <td className="px-3 py-2">
-                      {p.discountType === "percent"
-                        ? `${p.amount}%`
-                        : p.discountType === "value"
-                        ? `${p.amount} €`
-                        : "Servicio gratis"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {p.validFrom ? new Date(p.validFrom).toLocaleDateString() : "—"} –{" "}
-                      {p.validTo ? new Date(p.validTo).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {p.users === "__all__" ? "Todos" : Array.isArray(p.users) ? p.users.length : 0}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setPackModal({ open: true, editing: p })}
-                        >
-                          Editar
-                        </Button>
-                        <DeletePackButton id={p.id} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
       {/* Modales */}
       {couponModal.open && (
         <CouponModal
@@ -250,12 +157,7 @@ export default function Marketing() {
           onClose={() => setCouponModal({ open: false, editing: null })}
         />
       )}
-      {packModal.open && (
-        <PackModal
-          initial={packModal.editing}
-          onClose={() => setPackModal({ open: false, editing: null })}
-        />
-      )}
+      
     </div>
   );
 }
@@ -280,25 +182,6 @@ function DeleteCouponButton({ id }) {
   );
 }
 
-// ====== Eliminar Pack ======
-function DeletePackButton({ id }) {
-  const qc = useQueryClient();
-  const m = useMutation({
-    mutationFn: () => deletePack(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["marketing:packs"] }),
-  });
-  return (
-    <Button
-      variant="danger"
-      size="sm"
-      onClick={() => m.mutate()}
-      disabled={m.isPending}
-      title="Eliminar pack"
-    >
-      {m.isPending ? "Eliminando…" : "Eliminar"}
-    </Button>
-  );
-}
 
 // ====== Modal Cupón ======
 function CouponModal({ initial, onClose }) {
@@ -341,7 +224,7 @@ function CouponModal({ initial, onClose }) {
     <Portal>
       <div className="fixed inset-0 z-[1300] bg-black/40 grid place-items-center p-4" onClick={onClose}>
         <div className={clsx(glass, "w-[min(720px,96vw)] p-4")} onClick={(e) => e.stopPropagation()}>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="text-base font-semibold">{isEdit ? "Editar cupón" : "Nuevo cupón"}</div>
             <Button variant="ghost" onClick={onClose}>Cerrar</Button>
           </div>
@@ -350,7 +233,7 @@ function CouponModal({ initial, onClose }) {
             <div className="grid gap-2 md:grid-cols-2">
               <Field label="Nombre">
                 <input
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
+                  className="w-full px-3 py-2 border rounded-lg border-white/10 bg-white/10"
                   value={form.name}
                   onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
                   required
@@ -359,7 +242,7 @@ function CouponModal({ initial, onClose }) {
 
               <Field label="Tipo descuento">
                 <select
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
+                  className="w-full px-3 py-2 border rounded-lg border-white/10 bg-white/10"
                   value={form.discountType}
                   onChange={(e) => setForm((s) => ({ ...s, discountType: e.target.value }))}
                 >
@@ -372,7 +255,7 @@ function CouponModal({ initial, onClose }) {
                 <input
                   type="number"
                   step="0.01"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
+                  className="w-full px-3 py-2 border rounded-lg border-white/10 bg-white/10"
                   value={form.amount}
                   onChange={(e) => setForm((s) => ({ ...s, amount: e.target.value }))}
                   required
@@ -383,7 +266,7 @@ function CouponModal({ initial, onClose }) {
                 <Field label="Desde">
                   <input
                     type="date"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
+                    className="w-full px-3 py-2 border rounded-lg border-white/10 bg-white/10"
                     value={form.validFrom}
                     onChange={(e) => setForm((s) => ({ ...s, validFrom: e.target.value }))}
                   />
@@ -391,7 +274,7 @@ function CouponModal({ initial, onClose }) {
                 <Field label="Hasta">
                   <input
                     type="date"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
+                    className="w-full px-3 py-2 border rounded-lg border-white/10 bg-white/10"
                     value={form.validTo}
                     onChange={(e) => setForm((s) => ({ ...s, validTo: e.target.value }))}
                   />
@@ -399,7 +282,7 @@ function CouponModal({ initial, onClose }) {
               </div>
             </div>
 
-            <fieldset className="rounded-lg border border-white/10 p-3">
+            <fieldset className="p-3 border rounded-lg border-white/10">
               <legend className="px-1 text-xs text-slate-300">Usuarios objetivo</legend>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex items-center gap-2 text-sm">
@@ -429,7 +312,7 @@ function CouponModal({ initial, onClose }) {
                   <textarea
                     rows={2}
                     placeholder="IDs o emails separados por coma"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
+                    className="w-full px-3 py-2 border rounded-lg border-white/10 bg-white/10"
                     value={form.users}
                     onChange={(e) => setForm((s) => ({ ...s, users: e.target.value }))}
                   />
@@ -440,7 +323,7 @@ function CouponModal({ initial, onClose }) {
               )}
             </fieldset>
 
-            <div className="mt-1 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 mt-1">
               <Button variant="secondary" type="button" onClick={onClose}>
                 Cancelar
               </Button>
@@ -455,165 +338,6 @@ function CouponModal({ initial, onClose }) {
   );
 }
 
-// ====== Modal Pack ======
-function PackModal({ initial, onClose }) {
-  const qc = useQueryClient();
-  const isEdit = !!initial;
-
-  const [form, setForm] = useState(() => ({
-    name: initial?.name ?? "",
-    discountType: initial?.discountType ?? "percent", // "percent" | "value" | "service"
-    amount: initial?.amount ?? 10,
-    validFrom: initial?.validFrom ? initial.validFrom.slice(0, 10) : "",
-    validTo: initial?.validTo ? initial.validTo.slice(0, 10) : "",
-    target: initial?.users === "__all__" ? "all" : "specific",
-    users: usersToInput(initial?.users),
-  }));
-
-  const amountDisabled = form.discountType === "service";
-
-  const mSave = useMutation({
-    mutationFn: (payload) =>
-      isEdit ? updatePack({ id: initial.id, ...payload }) : createPack(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["marketing:packs"] });
-      onClose();
-    },
-  });
-
-  function submit(e) {
-    e.preventDefault();
-    const payload = {
-      name: form.name.trim(),
-      discountType: form.discountType, // "percent" | "value" | "service"
-      amount: amountDisabled ? null : Number(form.amount),
-      validFrom: form.validFrom || null,
-      validTo: form.validTo || null,
-      users: form.target === "all" ? "__all__" : toUserArray(form.users),
-    };
-    mSave.mutate(payload);
-  }
-
-  return (
-    <Portal>
-      <div className="fixed inset-0 z-[1300] bg-black/40 grid place-items-center p-4" onClick={onClose}>
-        <div className={clsx(glass, "w-[min(720px,96vw)] p-4")} onClick={(e) => e.stopPropagation()}>
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-base font-semibold">{isEdit ? "Editar pack" : "Nuevo pack"}</div>
-            <Button variant="ghost" onClick={onClose}>Cerrar</Button>
-          </div>
-
-          <form onSubmit={submit} className="grid gap-3">
-            <div className="grid gap-2 md:grid-cols-2">
-              <Field label="Nombre">
-                <input
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
-                  value={form.name}
-                  onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                  required
-                />
-              </Field>
-
-              <Field label="Tipo descuento">
-                <select
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
-                  value={form.discountType}
-                  onChange={(e) => setForm((s) => ({ ...s, discountType: e.target.value }))}
-                >
-                  <option value="percent">Porcentaje (%)</option>
-                  <option value="value">Valor €</option>
-                  <option value="service">Servicio gratis</option>
-                </select>
-              </Field>
-
-              <Field label="Valor descuento">
-                <input
-                  type="number"
-                  step="0.01"
-                  className={clsx(
-                    "w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2",
-                    amountDisabled && "opacity-50"
-                  )}
-                  value={form.amount}
-                  onChange={(e) => setForm((s) => ({ ...s, amount: e.target.value }))}
-                  disabled={amountDisabled}
-                  required={!amountDisabled}
-                />
-              </Field>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Field label="Desde">
-                  <input
-                    type="date"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
-                    value={form.validFrom}
-                    onChange={(e) => setForm((s) => ({ ...s, validFrom: e.target.value }))}
-                  />
-                </Field>
-                <Field label="Hasta">
-                  <input
-                    type="date"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
-                    value={form.validTo}
-                    onChange={(e) => setForm((s) => ({ ...s, validTo: e.target.value }))}
-                  />
-                </Field>
-              </div>
-            </div>
-
-            <fieldset className="rounded-lg border border-white/10 p-3">
-              <legend className="px-1 text-xs text-slate-300">Usuarios objetivo</legend>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="targetPack"
-                    className="accent-violet-500"
-                    checked={form.target === "all"}
-                    onChange={() => setForm((s) => ({ ...s, target: "all" }))}
-                  />
-                  Para todos
-                </label>
-                <label className="inline-flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="targetPack"
-                    className="accent-violet-500"
-                    checked={form.target === "specific"}
-                    onChange={() => setForm((s) => ({ ...s, target: "specific" }))}
-                  />
-                  Usuarios concretos
-                </label>
-              </div>
-
-              {form.target === "specific" && (
-                <div className="mt-2">
-                  <textarea
-                    rows={2}
-                    placeholder="IDs o emails separados por coma"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2"
-                    value={form.users}
-                    onChange={(e) => setForm((s) => ({ ...s, users: e.target.value }))}
-                  />
-                  <p className="mt-1 text-xs text-slate-400">Ejemplo: id1, id2, id3</p>
-                </div>
-              )}
-            </fieldset>
-
-            <div className="mt-1 flex justify-end gap-2">
-              <Button variant="secondary" type="button" onClick={onClose}>
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={mSave.isPending}>
-                {mSave.isPending ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear pack"}
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </Portal>
-  );
-}
 
 // ====== Campo con etiqueta ======
 function Field({ label, children }) {

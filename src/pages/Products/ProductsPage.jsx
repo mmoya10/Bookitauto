@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchProducts, createProduct, updateProduct, deleteProducts } from "../../api/products";
 import Button from "../../components/common/Button";
-import ToggleView from "../../components/common/ToggleView";
+import SelectableGallery from "../../components/common/SelectableGallery";
 import { Input } from "../../components/common/Input";
 import Portal from "../../components/common/Portal";
 import clsx from "clsx";
@@ -18,7 +18,7 @@ export default function ProductsPage() {
   // estado UI
   const [query, setQuery] = useState("");
   const [view, setView] = useState("cards"); // "table" | "cards"
-  const [selected, setSelected] = useState([]); // ids
+  const [setSelected] = useState([]); // ids
   const [modal, setModal] = useState({ open: false, mode: "create", product: null });
 
   const filtered = useMemo(() => {
@@ -56,12 +56,6 @@ export default function ProductsPage() {
     },
   });
 
-  // seleccionar
-  const allIds = filtered.map((p) => p.id);
-  const allChecked = selected.length > 0 && selected.length === allIds.length;
-  const toggleAll = () => setSelected(allChecked ? [] : allIds);
-  const toggleOne = (id) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   // confirmación delete
   const [confirm, setConfirm] = useState(null); // { ids }
@@ -87,13 +81,6 @@ export default function ProductsPage() {
             />
           </div>
 
-          <Button
-            variant="ghost"
-            onClick={() => setConfirm({ ids: selected })}
-            disabled={!selected.length}
-          >
-            Eliminar seleccionados ({selected.length})
-          </Button>
 
           <Button
             variant="primary"
@@ -105,47 +92,66 @@ export default function ProductsPage() {
       </section>
 
       {/* Listado */}
-      <section className={clsx(glassCard, "p-3")}>
-        {/* toolbar interna de la sección */}
-        <div className="mb-3 flex items-center justify-end">
-          <ToggleView value={view} onChange={setView} />
-        </div>
-
-        {view === "table" ? (
-          <TableView
-            products={filtered}
-            selected={selected}
-            toggleAll={toggleAll}
-            allChecked={allChecked}
-            toggleOne={toggleOne}
-            onEdit={(p) =>
-              setModal({ open: true, mode: "edit", product: p })
-            }
-          />
-        ) : (
-          <CardsView
-            products={filtered}
-            selected={selected}
-            toggleOne={toggleOne}
-            onEdit={(p) =>
-              setModal({ open: true, mode: "edit", product: p })
-            }
-          />
-        )}
-
-        {!filtered?.length && (
-          <div className="px-3 py-8 text-center text-sm text-slate-400">
-            No hay productos que coincidan con la búsqueda.
+      {/* Listado (componente reutilizable) */}
+<SelectableGallery
+  items={filtered}
+  view={view}
+  onViewChange={setView}
+  // Cómo pintar las tarjetas (reutilizable para otros tipos)
+  toCard={(p) => ({
+    id: p.id,
+    title: p.name,
+    subtitle: p.description + " Coste:" + p.cost + "€",
+    imageUrl: p.imageUrl,
+    priceNode: <Price price={p.price} sale={p.salePrice} />,
+    onEdit: () => setModal({ open: true, mode: "edit", product: p }),
+  })}
+  // Cómo pintar la tabla (columnas + getId + onEdit)
+  toTable={{
+    getId: (p) => p.id,
+    onEdit: (p) => setModal({ open: true, mode: "edit", product: p }),
+    columns: [
+      {
+        key: "product",
+        label: "Producto",
+        render: (p) => (
+          <div className="flex items-center gap-3">
+            <div className="relative w-16 h-10 overflow-hidden border rounded-lg border-white/10 bg-white/5">
+              <img
+                src={p.imageUrl}
+                alt=""
+                className="absolute object-cover w-auto h-full -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"
+              />
+            </div>
+            <div className="font-medium">{p.name}</div>
           </div>
-        )}
-      </section>
+        ),
+      },
+      {
+        key: "desc",
+        label: "Descripción",
+        render: (p) => <span className="text-slate-300">{p.description}</span>,
+      },
+      {
+        key: "price",
+        label: "Precio",
+        render: (p) => <Price price={p.price} sale={p.salePrice} />,
+      },
+    ],
+  }}
+  onDeleteSelected={(ids) => {
+    if (!ids?.length) return;
+    setConfirm({ ids }); // reutilizamos tu modal de confirmación
+  }}
+/>
+
 
       {/* Modal crear/editar */}
       {modal.open && (
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,680px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">
                   {modal.mode === "edit" ? "Editar producto" : "Nuevo producto"}
                 </h3>
@@ -180,12 +186,12 @@ export default function ProductsPage() {
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,480px)] p-5")}>
-              <h3 className="text-base font-semibold mb-2">Eliminar productos</h3>
+              <h3 className="mb-2 text-base font-semibold">Eliminar productos</h3>
               <p className="text-sm text-slate-300">
                 Vas a eliminar <b>{confirm.ids.length}</b> producto(s). Esta
                 acción no se puede deshacer.
               </p>
-              <div className="mt-3 flex gap-2">
+              <div className="flex gap-2 mt-3">
                 <Button
                   variant="danger"
                   onClick={() => mDelete.mutate(confirm.ids)}
@@ -206,104 +212,8 @@ export default function ProductsPage() {
 }
 
 /* =================== Vistas =================== */
-function TableView({ products, selected, toggleAll, allChecked, toggleOne, onEdit }) {
-  return (
-    <div className="overflow-auto rounded-xl border border-white/10 bg-white/5">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-slate-300">
-            <th className="px-3 py-2">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-white/20 bg-white/10"
-                checked={allChecked}
-                onChange={toggleAll}
-              />
-            </th>
-            <th className="px-3 py-2">Producto</th>
-            <th className="px-3 py-2">Descripción</th>
-            <th className="px-3 py-2">Precio</th>
-            <th className="px-3 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {products.map((p) => (
-            <tr key={p.id} className="border-t border-white/10">
-              <td className="px-3 py-2">
-                <input
-                  type="checkbox"
-                  className="size-4 rounded border-white/20 bg-white/10"
-                  checked={selected.includes(p.id)}
-                  onChange={() => toggleOne(p.id)}
-                />
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={p.imageUrl}
-                    alt=""
-                    className="h-10 w-14 object-cover rounded-lg border border-white/10"
-                  />
-                  <div className="font-medium">{p.name}</div>
-                </div>
-              </td>
-              <td className="px-3 py-2 text-slate-300">{p.description}</td>
-              <td className="px-3 py-2">
-                <Price price={p.price} sale={p.salePrice} />
-              </td>
-              <td className="px-3 py-2">
-                <Button variant="ghost" size="sm" onClick={() => onEdit(p)}>
-                  Editar
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
-function CardsView({ products, selected, toggleOne, onEdit }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {products.map((p) => (
-        <div key={p.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="relative">
-            <img
-              src={p.imageUrl}
-              alt=""
-              className="h-36 w-full object-cover rounded-lg border border-white/10"
-            />
-            <label className="absolute left-2 top-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs">
-              <input
-                type="checkbox"
-                className="size-3.5 rounded border-white/20 bg-white/10"
-                checked={selected.includes(p.id)}
-                onChange={() => toggleOne(p.id)}
-              />
-              Seleccionar
-            </label>
-          </div>
 
-          <div className="mt-2 flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold">{p.name}</div>
-              <div className="text-xs text-slate-300 line-clamp-2">{p.description}</div>
-            </div>
-            <Price price={p.price} sale={p.salePrice} />
-          </div>
-
-          <div className="mt-2">
-            <Button variant="ghost" size="sm" onClick={() => onEdit(p)}>
-              Editar
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /* =================== Formulario =================== */
 function ProductForm({ product, onSubmit, submitting }) {
@@ -435,12 +345,12 @@ function ProductForm({ product, onSubmit, submitting }) {
 
       {/* preview */}
       {(preview || imageUrl) && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="text-xs text-slate-300 mb-2">Vista previa</div>
+        <div className="p-3 border rounded-xl border-white/10 bg-white/5">
+          <div className="mb-2 text-xs text-slate-300">Vista previa</div>
           <img
             src={imageMode === "file" ? preview : imageUrl}
             alt="preview"
-            className="max-h-40 rounded-lg border border-white/10 object-contain"
+            className="object-contain border rounded-lg max-h-40 border-white/10"
           />
         </div>
       )}
@@ -454,7 +364,7 @@ function ProductForm({ product, onSubmit, submitting }) {
         />
       </div>
 
-      <div className="mt-1 flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-1">
         <Button variant="primary" type="submit" disabled={submitting}>
           {submitting ? "Guardando…" : product ? "Guardar cambios" : "Crear producto"}
         </Button>
@@ -469,13 +379,13 @@ function Price({ price, sale }) {
   if (sale != null && sale !== "" && Number(sale) < Number(price)) {
     return (
       <div className="text-right">
-        <div className="text-xs inline-flex items-center gap-2">
+        <div className="inline-flex items-center gap-2 text-xs">
           <span className="rounded-full bg-yellow-500/20 text-yellow-100 px-2 py-0.5">
             Oferta
           </span>
         </div>
         <div className="text-sm font-semibold">{fmt.format(Number(sale))}</div>
-        <div className="text-xs text-slate-300 line-through">
+        <div className="text-xs line-through text-slate-300">
           {fmt.format(Number(price))}
         </div>
       </div>

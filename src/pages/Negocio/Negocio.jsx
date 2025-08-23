@@ -5,8 +5,10 @@ import clsx from "clsx";
 import Button from "../../components/common/Button";
 import Portal from "../../components/common/Portal";
 import Toggle from "../../components/common/Toggle";
+
 import { useEffect } from "react";
 
+import ScheduleManager from "../../components/common/ScheduleManager";
 import {
   fetchBusiness,
   updateBusiness,
@@ -14,6 +16,9 @@ import {
   createBranch,
   updateBranch,
   deleteBranch,
+  // ⬇️ nuevos endpoints
+  fetchBusinessSchedule,
+  updateBusinessSchedule,
 } from "../../api/business";
 
 
@@ -37,21 +42,43 @@ const [logoPreview, setLogoPreview] = useState(null);
 // Cuando cargue/actualice "business", inicializa el formulario
 useEffect(() => {
   if (!business) return;
-  setMainForm({
-    logoUrl: business.logoUrl || "",
-    nombre: business.nombre || "",
-    razonSocial: business.razonSocial || "",
-    email: business.email || "",
-    telefono: business.telefono || "",
-    web: business.web || "",
-    tipo: business.tipo || "peluqueria",
-    idioma: business.idioma || "es",
-    currency: business.currency || "EUR",
-    timezone: business.timezone || "Europe/Madrid",
-  });
+setMainForm({
+  logoUrl: business.logoUrl || "",
+  nombre: business.nombre || "",
+  razonSocial: business.razonSocial || "",
+  email: business.email || "",
+  telefono: business.telefono || "",
+  web: business.web || "",
+  tipo: business.tipo || "peluqueria",
+  idioma: business.idioma || "es",
+  currency: business.currency || "EUR",
+  timezone: business.timezone || "Europe/Madrid",
+  // ⬇️ nuevos campos a nivel negocio cuando NO hay modo sucursales
+  direccion: business.direccion || "",
+  cp: business.cp || "",
+  ciudad: business.ciudad || "",
+});
+
   setLogoPreview(null);
 }, [business]);
 
+// Autorrellena dirección/CP/ciudad desde la primera sucursal si no hay modo sucursales
+useEffect(() => {
+  if (!business || business.branchMode) return;
+  if (!branches?.length) return;
+  setMainForm((s) => {
+    if (!s) return s;
+    // si ya hay algo, no sobrescribimos
+    if (s.direccion || s.cp || s.ciudad) return s;
+    const b = branches[0];
+    return {
+      ...s,
+      direccion: b?.direccion || "",
+      cp: b?.cp || "",
+      ciudad: b?.ciudad || "",
+    };
+  });
+}, [business, branches]);
 
   const mUpdate = useMutation({
     mutationFn: updateBusiness,
@@ -242,6 +269,41 @@ if (!business || !mainForm ) {
     </label>
 
     {/* Zona horaria */}
+        {/* Dirección/CP/Ciudad — solo cuando NO hay modo sucursales */}
+    {!business.branchMode && (
+      <>
+        <label className="grid gap-1 md:col-span-2">
+          <span className="text-xs text-slate-300">Dirección</span>
+          <input
+            value={mainForm.direccion}
+            onChange={(e) => onChange("direccion", e.target.value)}
+            placeholder="Calle, número, piso..."
+            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
+          />
+        </label>
+
+        <label className="grid gap-1">
+          <span className="text-xs text-slate-300">CP</span>
+          <input
+            value={mainForm.cp}
+            onChange={(e) => onChange("cp", e.target.value)}
+            placeholder="28001"
+            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
+          />
+        </label>
+
+        <label className="grid gap-1">
+          <span className="text-xs text-slate-300">Ciudad</span>
+          <input
+            value={mainForm.ciudad}
+            onChange={(e) => onChange("ciudad", e.target.value)}
+            placeholder="Madrid"
+            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
+          />
+        </label>
+      </>
+    )}
+
     <label className="grid gap-1 md:col-span-2">
       <span className="text-xs text-slate-300">Zona horaria</span>
       <select
@@ -280,59 +342,70 @@ if (!business || !mainForm ) {
       </div>
 
        {/* Sucursales */}
-      <section className={clsx(glass, "p-4")}>
-        <div className="flex items-center justify-between mb-3">
-          <div className={secTitle}>Sucursales</div>
-          <Button
-            onClick={() => setModal({ open: true, editing: null })}
-            disabled={singleMode && shownBranches.length >= 1}
-            title={singleMode ? "Activa el modo sucursales para añadir más" : "Añadir sucursal"}
-          >
-            Añadir
-          </Button>
-        </div>
+{/* Sucursales — solo cuando branchMode=true */}
+{business.branchMode && (
+  <section className={clsx(glass, "p-4")}>
+    <div className="flex items-center justify-between mb-3">
+      <div className={secTitle}>Sucursales</div>
+      <Button
+        onClick={() => setModal({ open: true, editing: null })}
+        disabled={!business.branchMode}
+        title="Añadir sucursal"
+      >
+        Añadir
+      </Button>
+    </div>
 
-        {!shownBranches?.length ? (
-          <div className="text-sm text-slate-300">Aún no hay sucursales.</div>
-        ) : (
-          <div className="overflow-auto border rounded-xl border-white/10">
-            <table className="min-w-[640px] w-full text-sm">
-              <thead className="text-left bg-white/5">
-                <tr>
-                  <th className="px-3 py-2">Nombre</th>
-                  <th className="px-3 py-2">Dirección</th>
-                  <th className="px-3 py-2">CP</th>
-                  <th className="px-3 py-2">Ciudad</th>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Teléfono</th>
-                  <th className="px-3 py-2 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shownBranches.map((b) => (
-                  <tr key={b.id} className="border-t border-white/10">
-                    <td className="px-3 py-2">{b.nombre}</td>
-                    <td className="px-3 py-2">{b.direccion}</td>
-                    <td className="px-3 py-2">{b.cp}</td>
-                    <td className="px-3 py-2">{b.ciudad}</td>
-                    <td className="px-3 py-2">{b.email}</td>
-                    <td className="px-3 py-2">{b.telefono}</td>
-                    <td className="flex justify-end gap-2 px-3 py-2">
-                      <Button size="sm" variant="secondary" onClick={() => setModal({ open: true, editing: b })}>
-                        Editar
-                      </Button>
-                      {!singleMode && <DeleteBranchButton id={b.id} />}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+    {!shownBranches?.length ? (
+      <div className="text-sm text-slate-300">Aún no hay sucursales.</div>
+    ) : (
+      <div className="overflow-auto border rounded-xl border-white/10">
+        <table className="min-w-[640px] w-full text-sm">
+          <thead className="text-left bg-white/5">
+            <tr>
+              <th className="px-3 py-2">Nombre</th>
+              <th className="px-3 py-2">Dirección</th>
+              <th className="px-3 py-2">CP</th>
+              <th className="px-3 py-2">Ciudad</th>
+              <th className="px-3 py-2">Email</th>
+              <th className="px-3 py-2">Teléfono</th>
+              <th className="px-3 py-2 text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shownBranches.map((b) => (
+              <tr key={b.id} className="border-t border-white/10">
+                <td className="px-3 py-2">{b.nombre}</td>
+                <td className="px-3 py-2">{b.direccion}</td>
+                <td className="px-3 py-2">{b.cp}</td>
+                <td className="px-3 py-2">{b.ciudad}</td>
+                <td className="px-3 py-2">{b.email}</td>
+                <td className="px-3 py-2">{b.telefono}</td>
+                <td className="flex justify-end gap-2 px-3 py-2">
+                  <Button size="sm" variant="secondary" onClick={() => setModal({ open: true, editing: b })}>
+                    Editar
+                  </Button>
+                  <DeleteBranchButton id={b.id} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+  </section>
+)}
+
 
      
-     
+
+  <ScheduleManager
+    title="Horario del negocio"
+    description="Configura el horario semanal y añade días especiales (festivos, horario reducido o cerrado)."
+    queryKey={["business-schedule"]}
+    fetchSchedule={fetchBusinessSchedule}
+    saveSchedule={updateBusinessSchedule}
+  />
 
       {/* Modales */}
       {modal.open && (
@@ -352,14 +425,29 @@ function DeleteBranchButton({ id }) {
   const qc = useQueryClient();
   const m = useMutation({
     mutationFn: () => deleteBranch(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["branches"] }),
+    onSuccess: async () => {
+      // Refresca sucursales después de eliminar
+      const list = await qc.fetchQuery({ queryKey: ["branches"], queryFn: fetchBranches });
+
+      // Si queda 1 sola -> desactiva branchMode
+      if (Array.isArray(list) && list.length === 1) {
+        await updateBusiness({ branchMode: false });
+        // Invalida para refrescar toggle y UI
+        qc.invalidateQueries({ queryKey: ["business"] });
+      }
+
+      // Invalida siempre la lista por si acaso
+      qc.invalidateQueries({ queryKey: ["branches"] });
+    },
   });
+
   return (
     <Button size="sm" variant="danger" onClick={() => m.mutate()} disabled={m.isPending}>
       {m.isPending ? "Eliminando…" : "Eliminar"}
     </Button>
   );
 }
+
 
 /* ===================== Modal sucursal ===================== */
 function BranchModal({ initial, onClose }) {

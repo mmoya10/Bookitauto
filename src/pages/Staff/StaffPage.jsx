@@ -9,7 +9,7 @@ import {
   fetchStaffAbsencesMonth,
 } from "../../api/staff";
 import Button from "../../components/common/Button";
-import ToggleView from "../../components/common/ToggleView";
+import SelectableGallery from "../../components/common/SelectableGallery";
 import { Input } from "../../components/common/Input";
 import Portal from "../../components/common/Portal";
 import clsx from "clsx";
@@ -23,11 +23,14 @@ const glassCard =
 export default function StaffPage() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ["staff"], queryFn: fetchStaffList });
+  
 
   // estado UI
   const [query, setQuery] = useState("");
-  const [view, setView] = useState("cards"); // "table" | "cards"
-  const [selected, setSelected] = useState([]); // ids
+  // vista del listado controlada desde la página
+const [view, setView] = useState("cards");
+
+
   const [modal, setModal] = useState({ open: false, mode: "create", staff: null });
   const [calModal, setCalModal] = useState(null); // { id, name }
   const [absModal, setAbsModal] = useState(null); // { id, name }
@@ -47,9 +50,9 @@ export default function StaffPage() {
   const mCreate = useMutation({
     mutationFn: createStaff,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["staff"] });
-      setModal({ open: false, mode: "create", staff: null });
-    },
+  qc.invalidateQueries({ queryKey: ["staff"] });
+  setConfirm(null);
+},
   });
   const mUpdate = useMutation({
     mutationFn: updateStaff,
@@ -61,18 +64,12 @@ export default function StaffPage() {
   const mDelete = useMutation({
     mutationFn: (ids) => deleteStaff(ids),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["staff"] });
-      setSelected([]);
-      setConfirm(null);
-    },
+  qc.invalidateQueries({ queryKey: ["staff"] });
+  setConfirm(null);
+},
+
   });
 
-  // seleccionar
-  const allIds = filtered.map((p) => p.id);
-  const allChecked = selected.length > 0 && selected.length === allIds.length;
-  const toggleAll = () => setSelected(allChecked ? [] : allIds);
-  const toggleOne = (id) =>
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
 
   // confirmación delete
   const [confirm, setConfirm] = useState(null); // { ids }
@@ -97,15 +94,6 @@ export default function StaffPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-
-          <Button
-            variant="ghost"
-            onClick={() => setConfirm({ ids: selected })}
-            disabled={!selected.length}
-          >
-            Eliminar seleccionados ({selected.length})
-          </Button>
-
           <Button
             variant="primary"
             onClick={() =>
@@ -117,48 +105,89 @@ export default function StaffPage() {
         </div>
       </section>
 
-      {/* Listado */}
-      <section className={clsx(glassCard, "p-3")}>
-        {/* toolbar interna */}
-        <div className="mb-3 flex items-center justify-end">
-          <ToggleView value={view} onChange={setView} />
-        </div>
-
-        {view === "table" ? (
-          <TableView
-            items={filtered}
-            selected={selected}
-            toggleAll={toggleAll}
-            allChecked={allChecked}
-            toggleOne={toggleOne}
-            onEdit={(s) => setModal({ open: true, mode: "edit", staff: s })}
-            onCalendars={(s) => setCalModal({ id: s.id, name: s.name })}
-            onAbsences={(s) => setAbsModal({ id: s.id, name: s.name })}
-          />
-        ) : (
-          <CardsView
-            items={filtered}
-            selected={selected}
-            toggleOne={toggleOne}
-            onEdit={(s) => setModal({ open: true, mode: "edit", staff: s })}
-            onCalendars={(s) => setCalModal({ id: s.id, name: s.name })}
-            onAbsences={(s) => setAbsModal({ id: s.id, name: s.name })}
-          />
-        )}
-
-        {!filtered?.length && (
-          <div className="px-3 py-8 text-center text-sm text-slate-400">
-            No hay personal que coincida con la búsqueda.
+{/* Listado (componente reutilizable) */}
+<SelectableGallery
+  items={filtered}
+  view={view}
+  onViewChange={setView}
+  // Tarjetas (avatar arriba + acciones extra)
+  toCard={(s) => ({
+    id: s.id,
+    title: s.name,
+    subtitle: s.description,
+    imageUrl: s.imageUrl,
+    onEdit: () => setModal({ open: true, mode: "edit", staff: s }),
+    // Acciones extra (calendarios y ausencias)
+    actionsNode: (
+      <>
+        <Button variant="ghost" size="sm" onClick={() => setCalModal({ id: s.id, name: s.name })}>
+          Calendarios
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setAbsModal({ id: s.id, name: s.name })}>
+          Ausencias
+        </Button>
+      </>
+    ),
+  })}
+  // Tabla
+  toTable={{
+    getId: (s) => s.id,
+    // Renderizamos acciones directamente en una columna (incluye Editar)
+    columns: [
+      {
+        key: "staff",
+        label: "Personal",
+        render: (s) => (
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 overflow-hidden border rounded-full border-white/10 bg-white/5">
+              <img
+                src={s.imageUrl}
+                alt=""
+                className="absolute object-cover w-auto h-full -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"
+              />
+            </div>
+            <div className="font-medium">{s.name}</div>
           </div>
-        )}
-      </section>
+        ),
+      },
+      {
+        key: "desc",
+        label: "Descripción",
+        render: (s) => <span className="text-slate-300">{s.description}</span>,
+      },
+      {
+        key: "actions",
+        label: "",
+        render: (s) => (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setModal({ open: true, mode: "edit", staff: s })}>
+              Editar
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setCalModal({ id: s.id, name: s.name })}>
+              Calendarios
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setAbsModal({ id: s.id, name: s.name })}>
+              Ausencias
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    // No pasamos onEdit aquí para evitar el botón "Editar" duplicado en la última columna
+  }}
+  onDeleteSelected={(ids) => {
+    if (!ids?.length) return;
+    setConfirm({ ids }); // Reutilizamos tu modal de confirmación
+  }}
+/>
+
 
       {/* Modal crear/editar */}
       {modal.open && (
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,680px)] p-5")}>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base font-semibold">
                   {modal.mode === "edit" ? "Editar personal" : "Nuevo personal"}
                 </h3>
@@ -203,14 +232,14 @@ export default function StaffPage() {
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,480px)] p-5")}>
-              <h3 className="text-base font-semibold mb-2">
+              <h3 className="mb-2 text-base font-semibold">
                 Eliminar personal
               </h3>
               <p className="text-sm text-slate-300">
                 Vas a eliminar <b>{confirm.ids.length}</b> registro(s). Esta
                 acción no se puede deshacer.
               </p>
-              <div className="mt-3 flex gap-2">
+              <div className="flex gap-2 mt-3">
                 <Button
                   variant="danger"
                   onClick={() => mDelete.mutate(confirm.ids)}
@@ -226,124 +255,6 @@ export default function StaffPage() {
           </div>
         </Portal>
       )}
-    </div>
-  );
-}
-
-/* =================== Vistas =================== */
-function TableView({
-  items,
-  selected,
-  toggleAll,
-  allChecked,
-  toggleOne,
-  onEdit,
-  onCalendars,
-  onAbsences,
-}) {
-  return (
-    <div className="overflow-auto rounded-xl border border-white/10 bg-white/5">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-slate-300">
-            <th className="px-3 py-2">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-white/20 bg-white/10"
-                checked={allChecked}
-                onChange={toggleAll}
-              />
-            </th>
-            <th className="px-3 py-2">Personal</th>
-            <th className="px-3 py-2">Descripción</th>
-            <th className="px-3 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((p) => (
-            <tr key={p.id} className="border-t border-white/10">
-              <td className="px-3 py-2">
-                <input
-                  type="checkbox"
-                  className="size-4 rounded border-white/20 bg-white/10"
-                  checked={selected.includes(p.id)}
-                  onChange={() => toggleOne(p.id)}
-                />
-              </td>
-              <td className="px-3 py-2">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={p.imageUrl}
-                    alt=""
-                    className="h-10 w-10 object-cover rounded-full border border-white/10"
-                  />
-                  <div className="font-medium">{p.name}</div>
-                </div>
-              </td>
-              <td className="px-3 py-2 text-slate-300">{p.description}</td>
-              <td className="px-3 py-2">
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => onEdit(p)}>
-                    Editar
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onCalendars(p)}>
-                    Calendarios
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => onAbsences(p)}>
-                    Ausencias
-                  </Button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function CardsView({ items, selected, toggleOne, onEdit, onCalendars, onAbsences }) {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((p) => (
-        <div key={p.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="relative">
-            <img
-              src={p.imageUrl}
-              alt=""
-              className="h-36 w-full object-cover rounded-lg border border-white/10"
-            />
-            <label className="absolute left-2 top-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-xs">
-              <input
-                type="checkbox"
-                className="size-3.5 rounded border-white/20 bg-white/10"
-                checked={selected.includes(p.id)}
-                onChange={() => toggleOne(p.id)}
-              />
-              Seleccionar
-            </label>
-          </div>
-
-          <div className="mt-2">
-            <div className="text-sm font-semibold">{p.name}</div>
-            <div className="text-xs text-slate-300 line-clamp-2">
-              {p.description}
-            </div>
-          </div>
-
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Button variant="ghost" size="sm" onClick={() => onEdit(p)}>
-              Editar
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onCalendars(p)}>
-              Calendarios
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => onAbsences(p)}>
-              Ausencias
-            </Button>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -385,6 +296,9 @@ function StaffForm({ staffItem, onSubmit, submitting }) {
 
   // modo imagen: url | file
   const [imageMode, setImageMode] = useState("url");
+  // estado UI
+// vista del listado (controlada desde la página)
+
   const [preview, setPreview] = useState(staffItem?.imageUrl ?? "");
 
   const onFileChange = (e) => {
@@ -464,12 +378,12 @@ function StaffForm({ staffItem, onSubmit, submitting }) {
 
       {/* preview */}
       {(preview || imageUrl) && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-          <div className="text-xs text-slate-300 mb-2">Vista previa</div>
+        <div className="p-3 border rounded-xl border-white/10 bg-white/5">
+          <div className="mb-2 text-xs text-slate-300">Vista previa</div>
           <img
             src={imageMode === "file" ? preview : imageUrl}
             alt="preview"
-            className="max-h-40 rounded-lg border border-white/10 object-contain"
+            className="object-contain border rounded-lg max-h-40 border-white/10"
           />
         </div>
       )}
@@ -483,7 +397,7 @@ function StaffForm({ staffItem, onSubmit, submitting }) {
         />
       </div>
 
-      <div className="mt-1 flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-1">
         <Button variant="primary" type="submit" disabled={submitting}>
           {submitting ? "Guardando…" : staffItem ? "Guardar cambios" : "Crear personal"}
         </Button>
@@ -504,7 +418,7 @@ function CalendarsModal({ staffMeta, onClose }) {
     <Portal>
       <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
         <div className={clsx(glassCard, "w-[min(96vw,520px)] p-5")}>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="text-base font-semibold">Calendarios de {name}</h3>
             <Button variant="ghost" size="sm" onClick={onClose}>
               Cerrar
@@ -517,7 +431,7 @@ function CalendarsModal({ staffMeta, onClose }) {
               {data.map((c) => (
                 <span
                   key={c.id}
-                  className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm"
+                  className="px-3 py-1 text-sm border rounded-full border-white/10 bg-white/10"
                 >
                   {c.name}
                 </span>
@@ -554,7 +468,7 @@ function AbsencesModal({ staffMeta, onClose }) {
     <Portal>
       <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
         <div className={clsx(glassCard, "w-[min(96vw,640px)] p-5")}>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <h3 className="text-base font-semibold">Ausencias · {name}</h3>
             <Button variant="ghost" size="sm" onClick={onClose}>
               Cerrar
@@ -562,7 +476,7 @@ function AbsencesModal({ staffMeta, onClose }) {
           </div>
 
           {/* Nav meses */}
-          <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <Button
               variant="ghost"
               size="sm"
@@ -581,7 +495,7 @@ function AbsencesModal({ staffMeta, onClose }) {
           </div>
 
           {/* Tabla ausencias */}
-          <div className="overflow-auto rounded-xl border border-white/10 bg-white/5">
+          <div className="overflow-auto border rounded-xl border-white/10 bg-white/5">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-300">

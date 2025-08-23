@@ -63,6 +63,36 @@ let memBusiness = {
   },
 };
 
+// ====== (1) Estado inicial: añade un campo schedule al negocio ======
+memBusiness = {
+  ...memBusiness,
+  schedule: {
+    mon: { off: false, slots: [{ start: "08:00", end: "14:00" }, { start: "15:00", end: "19:00" }] },
+    tue: { off: false, slots: [{ start: "08:00", end: "14:00" }, { start: "15:00", end: "19:00" }] },
+    wed: { off: false, slots: [{ start: "08:00", end: "14:00" }, { start: "15:00", end: "19:00" }] },
+    thu: { off: false, slots: [{ start: "08:00", end: "14:00" }, { start: "15:00", end: "19:00" }] },
+    fri: { off: false, slots: [{ start: "08:00", end: "14:00" }, { start: "15:00", end: "19:00" }] },
+    sat: { off: true,  slots: [] },
+    sun: { off: true,  slots: [] },
+    specialDays: [
+      // { date: '2025-12-24', off: false, slots: [{ start:"09:00", end:"13:00" }] },
+      // { date: '2025-12-25', off: true,  slots: [] },
+    ],
+  },
+};
+// ====== (2) Endpoints de horario de negocio ======
+export async function fetchBusinessSchedule() {
+  await delay();
+  // devuelve {} si aún no hay nada para que el componente normalice
+  return structuredClone(memBusiness.schedule || {});
+}
+
+export async function updateBusinessSchedule(payload) {
+  await delay(250);
+  // guardamos tal cual lo que envía el componente
+  memBusiness.schedule = structuredClone(payload || {});
+  return { ok: true, schedule: structuredClone(memBusiness.schedule) };
+}
 
 let memBranches = [
   {
@@ -111,7 +141,7 @@ export async function updateBusiness(payload) {
     memBusiness = { ...memBusiness, ...payload, notifications: next };
   } else {
     memBusiness = { ...memBusiness, ...payload };
-  }
+  } 
 
   return structuredClone(memBusiness);
 }

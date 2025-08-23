@@ -9,7 +9,7 @@ export const menu = [
   { to: "/productos", label: "Productos", icon: IcTag },
   { to: "/caja", label: "Caja", icon: IcWallet },
   { to: "/stock", label: "Stock", icon: IcBoxes },
-  { to: "/espacios", label: "Espacios", icon: IcGrid },
+  { to: "/espacios", label: "Espacios & Equipos", icon: IcGrid },
   { to: "/usuarios", label: "Usuarios", icon: IcList },
   { to: "/informes", label: "Informes", icon: IcChart },
   { to: "/personal", label: "Personal", icon: IcUsers },

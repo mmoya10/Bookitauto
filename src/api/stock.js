@@ -5,8 +5,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Estado inventario (stock actual y mínimo de aviso por producto)
 let stockById = {
-  "p-1": 8,  "p-2": 25, "p-3": 5,  "p-4": 12, "p-5": 3,
-  "p-6": 40, "p-7": 18, "p-8": 50, "p-9": 9,  "p-10": 30,
+  "p-1": 80,  "p-2": 25, "p-3": 50,  "p-4": 12, "p-5": 30,
+  "p-6": 40, "p-7": 18, "p-8": 50, "p-9": 90,  "p-10": 30,
 };
 let minAlertById = {
   "p-1": 10, "p-2": 8,  "p-3": 6,  "p-4": 8,  "p-5": 5,
