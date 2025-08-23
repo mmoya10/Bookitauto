@@ -13,9 +13,7 @@ export const calendars = [
 
 export const staff = [
   { id: 'st-1', name: 'Marcos' },
-  { id: 'st-2', name: 'Lucía'  },
-  { id: 'st-3', name: 'Sergio' },
-  { id: 'st-4', name: 'Paula'  },
+  { id: 'st-2', name: 'Lucía'  }
 ];
 
 // Horario negocio (L-V 08-14 / 15-19)
@@ -31,6 +29,7 @@ export const holidays = [
 ];
 
 /* ====== Generador de citas semana 18–22 Agosto 2025 ====== */
+/* ====== Generador de citas semana 18–22 Agosto 2025 (capado a 2 staff y 3 simultáneas) ====== */
 function generateWeekAppointments() {
   const days = ['2025-08-18','2025-08-19','2025-08-20','2025-08-21','2025-08-22']; // L-V
   const blocks = [
@@ -40,16 +39,18 @@ function generateWeekAppointments() {
 
   // malla base de 15 minutos
   const slotBaseMinutes = 15;
-  const minSlots = 2;   // 2*15 = 30 min
-  const maxSlots = 6;   // 6*15 = 90 min (1h30)
+  const minSlots = 2;   // 30 min
+  const maxSlots = 6;   // 90 min
 
   // semilla determinista para “aleatorio”
   let seed = 42;
   const rand = () => (seed = (seed * 1664525 + 1013904223) % 2**32) / 2**32;
 
-  const staffIds = ['st-1','st-2','st-3','st-4'];
-  const calIds   = ['cal-1','cal-2','cal-3'];
+  // --- SOLO 2 TRABAJADORES ACTIVOS ---
+  // Si quieres escoger otros 2, cambia el slice o el orden del array staff.
+  const activeStaffIds = staff.slice(0, 2).map(s => s.id);
 
+  const calIds   = ['cal-1','cal-2','cal-3'];
   const titlesByCal = {
     'cal-1': ['Corte - Juan','Corte - Marta','Corte - Luis','Corte - Ana','Corte - Sofía','Corte - Leo'],
     'cal-2': ['Barba - Pedro','Barba - Álvaro','Barba - Hugo','Barba - Nico'],
@@ -60,6 +61,15 @@ function generateWeekAppointments() {
   let counter = 1;
 
   const toIso = (d, hh, mm) => `${d}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00`;
+
+  // helper: cuenta cuántas citas están “vivas” en un instante (para limitar a 3)
+  const countConcurrent = (list, day, minute) => {
+    const timeIso = toIso(day, Math.floor(minute/60), minute%60);
+    return list.reduce((acc, a) => {
+      if (a.start < timeIso && a.end > timeIso) acc++;
+      return acc;
+    }, 0);
+  };
 
   for (let di = 0; di < days.length; di++) {
     const day = days[di];
@@ -73,37 +83,53 @@ function generateWeekAppointments() {
       // total de slots de 15 min en el bloque
       const totalSlots = Math.floor((blockEnd - blockStart) / slotBaseMinutes);
 
-      // deja 2 huecos “libres” pseudo-aleatorios por bloque
+      // deja 2 huecos “libres” pseudo-aleatorios por bloque (asegurados)
       const gaps = new Set();
-      for (let g = 0; g < 2; g++) {
+      while (gaps.size < 2) {
         gaps.add(Math.floor(rand() * totalSlots));
       }
 
+      // disponibilidad por trabajador: minuto en que queda libre
+      const freeAt = Object.fromEntries(activeStaffIds.map(id => [id, blockStart]));
+
       for (let slotIdx = 0; slotIdx < totalSlots; slotIdx++) {
-        if (gaps.has(slotIdx)) continue; // dejamos un hueco
+        if (gaps.has(slotIdx)) continue; // hueco libre
 
-        // concurrencia 1..4 alternando y variando por día
-        const concurrency = 1 + ((slotIdx + di) % 4);
-        const selectedStaff = staffIds.slice(0, concurrency);
-
-        // hora de inicio en minutos
         const startMinutes = blockStart + slotIdx * slotBaseMinutes;
 
-        // elegimos duración en múltiplos de 15 (entre 30 y 90 min)
-        const durSlots = Math.floor(rand() * (maxSlots - minSlots + 1)) + minSlots;
-        let endMinutes = startMinutes + durSlots * slotBaseMinutes;
+        // 1) Limitar concurrencia global a 3
+        const concurrentNow = countConcurrent(out, day, startMinutes);
+        if (concurrentNow >= 3) continue;
 
-        // no pasar del final del bloque; si se pasa, se recorta al borde (sigue múltiplo de 15)
-        if (endMinutes > blockEnd) endMinutes = blockEnd;
+        // 2) Trabajadores libres en este instante
+        const availableStaff = activeStaffIds.filter(id => freeAt[id] <= startMinutes);
+        if (availableStaff.length === 0) continue;
 
-        const sh = Math.floor(startMinutes/60), sm = startMinutes%60;
-        const eh = Math.floor(endMinutes/60),   em = endMinutes%60;
+        // 3) Decide si arrancar 0, 1 o 2 citas nuevas aquí (pero sin pasar de 3 concurrentes)
+        //    — Reducimos volumen: probabilidad de 50% de NO crear nada.
+        if (rand() < 0.5) continue;
 
-        const startIso = toIso(day, sh, sm);
-        const endIso   = toIso(day, eh, em);
+        // Máximo que puedo iniciar sin pasar de 3
+        const maxToStart = Math.min(3 - concurrentNow, availableStaff.length);
+        // No abras demasiadas: 1 ó 2 como mucho, según disponibilidad real
+        const targetToStart = Math.min(maxToStart, 1 + (rand() < 0.25 ? 1 : 0)); // 75% abre 1, 25% abre 2
 
-        for (let si = 0; si < selectedStaff.length; si++) {
-          const staffId = selectedStaff[(si + di) % staffIds.length];
+        for (let k = 0; k < targetToStart; k++) {
+          if (availableStaff.length === 0) break;
+
+          const staffId = availableStaff.shift(); // toma uno y lo retira para no duplicar
+          const durSlots = Math.floor(rand() * (maxSlots - minSlots + 1)) + minSlots;
+          let endMinutes = startMinutes + durSlots * slotBaseMinutes;
+          if (endMinutes > blockEnd) endMinutes = blockEnd;
+
+          // Marca al staff ocupado hasta endMinutes (evita solapes)
+          freeAt[staffId] = endMinutes;
+
+          const sh = Math.floor(startMinutes/60), sm = startMinutes%60;
+          const eh = Math.floor(endMinutes/60),   em = endMinutes%60;
+          const startIso = toIso(day, sh, sm);
+          const endIso   = toIso(day, eh, em);
+
           const calId = calIds[Math.floor(rand() * calIds.length)];
           const titlePool = titlesByCal[calId];
           const title = titlePool[Math.floor(rand() * titlePool.length)];
@@ -123,8 +149,10 @@ function generateWeekAppointments() {
       }
     }
   }
+
   return out;
 }
+
 
 // Citas generadas para esa semana
 let appointments = generateWeekAppointments();

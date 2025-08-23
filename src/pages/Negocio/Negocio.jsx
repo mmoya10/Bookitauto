@@ -15,12 +15,7 @@ import {
   updateBranch,
   deleteBranch,
 } from "../../api/business";
-import {
-  fetchNotificationSettings,
-  updateNotificationSettings,
-  fetchChannelsConfig,
-  updateChannelsConfig,
-} from "../../api/confignotifications";
+
 
 import { BUSINESS_TYPES, LANGUAGES, CURRENCIES, TIMEZONES } from "../../api/business";
 
@@ -33,45 +28,7 @@ export default function Negocio() {
   const { data: business } = useQuery({ queryKey: ["business"], queryFn: fetchBusiness });
   const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: fetchBranches, enabled: !!business });
   // ===== Notificaciones: queries
-const { data: notifSettings } = useQuery({
-  queryKey: ["notifSettings"],
-  queryFn: fetchNotificationSettings,
-  enabled: !!business,
-});
 
-const { data: channels } = useQuery({
-  queryKey: ["channelsConfig"],
-  queryFn: fetchChannelsConfig,
-  enabled: !!business,
-});
-
-// ===== Mutations
-const mNotifSave = useMutation({
-  mutationFn: updateNotificationSettings,
-  onSuccess: () => qc.invalidateQueries({ queryKey: ["notifSettings"] }),
-});
-
-const mChannelsSave = useMutation({
-  mutationFn: updateChannelsConfig,
-  onSuccess: () => qc.invalidateQueries({ queryKey: ["channelsConfig"] }),
-});
-
-// ===== Formularios locales
-const [notifForm, setNotifForm] = useState(null);
-const [channelsForm, setChannelsForm] = useState(null);
-
-// Inicializar formularios cuando cargan datos
-useEffect(() => {
-  if (notifSettings) {
-    setNotifForm(structuredClone(notifSettings));
-  }
-}, [notifSettings]);
-
-useEffect(() => {
-  if (channels) {
-    setChannelsForm(structuredClone(channels));
-  }
-}, [channels]);
 
   // Formulario de datos principales + preview de logo
 const [mainForm, setMainForm] = useState(null);
@@ -144,61 +101,11 @@ function onSaveMain() {
   });
 }
 
-// ===== Handlers Notificaciones (Reglas de envío)
-function notifSetEvents(patch) {
-  setNotifForm(s => ({ ...s, events: { ...s.events, ...patch } }));
-}
-function notifSetReminders(nextList) {
-  const list = nextList.slice(0, 3);
-  if (!list.length) return;
-  setNotifForm(s => ({ ...s, reminders: list }));
-}
-function notifSetReview(patch) {
-  setNotifForm(s => {
-    const next = { ...s.review, ...patch };
-    if ("hoursAfter" in patch) {
-      next.hoursAfter = Math.max(2, Math.min(48, Number(next.hoursAfter || 4)));
-    }
-    return { ...s, review: next };
-  });
-}
-function notifCancel() {
-  setNotifForm(structuredClone(notifSettings));
-}
-function notifSave() {
-  mNotifSave.mutate(notifForm);
-}
-
-// ===== Handlers Canales
-function channelsSetActive(next) {
-  setChannelsForm(s => ({ ...s, active: next }));
-}
-function channelsUpdateEmailSMTP(k, v) {
-  setChannelsForm(s => ({
-    ...s,
-    email: {
-      ...(s.email || { available: true, smtp: {} }),
-      smtp: { ...(s.email?.smtp || {}), [k]: v },
-    },
-  }));
-}
-function channelsCancel() {
-  setChannelsForm(structuredClone(channels));
-}
-function channelsSave() {
-  const payload = { active: channelsForm.active };
-  if (channelsForm.active === "email") {
-    payload.email = { smtp: channelsForm.email?.smtp || {} };
-  }
-  mChannelsSave.mutate(payload);
-}
-
 
 
   const [modal, setModal] = useState({ open: false, editing: null });
-  const [reminderModal, setReminderModal] = useState({ open: false, editing: null });
 
-if (!business || !mainForm || !notifSettings || !channels || !notifForm || !channelsForm) {
+if (!business || !mainForm ) {
   return <div className="p-4">Cargando negocio…</div>;
 }
 
@@ -424,238 +331,7 @@ if (!business || !mainForm || !notifSettings || !channels || !notifForm || !chan
         )}
       </section>
 
-      {/* ===== Notificaciones de calendario ===== */}
-      {/* ===== Notificaciones de calendario ===== */}
-
-{/* ===== Notificaciones de calendario ===== */}
-<section className={clsx(glass, "p-4 space-y-6")}>
-  <div className="text-base font-semibold">Notificaciones de calendario</div>
-
-  {/* A) Reglas de envío (eventos, avisos, reseñas) */}
-  <div className="space-y-4">
-    <div className={secTitle}>Reglas de envío</div>
-
-    {/* Eventos */}
-    <div>
-      <div className="mb-2 text-xs text-slate-300">Eventos</div>
-      <div className="grid gap-3 md:grid-cols-3">
-        <Toggle
-          align="left"
-          label="Confirmación"
-          description="Cuando se crea o confirma una cita"
-          checked={!!notifForm.events.confirmation}
-          onChange={(v) => notifSetEvents({ confirmation: v })}
-        />
-        <Toggle
-          align="left"
-          label="Cancelación"
-          description="Cuando se cancela una cita"
-          checked={!!notifForm.events.cancellation}
-          onChange={(v) => notifSetEvents({ cancellation: v })}
-        />
-        <Toggle
-          align="left"
-          label="Reprogramación"
-          description="Cuando se cambia la hora/fecha"
-          checked={!!notifForm.events.rescheduled}
-          onChange={(v) => notifSetEvents({ rescheduled: v })}
-        />
-      </div>
-    </div>
-
-    {/* Avisos (recordatorios) */}
-    <div>
-      <div className="text-xs text-slate-300">Avisos (recordatorios)</div>
-      <p className="text-xs text-slate-400">
-        Se envían antes de la cita. Mínimo 1 y máximo 3. Por defecto: 1 día y 3 horas antes.
-      </p>
-      <div className="flex flex-wrap gap-2 mt-2">
-        {(notifForm.reminders || []).map((r) => (
-          <ChipReminder
-            key={r.id}
-            r={r}
-            canDelete={(notifForm.reminders || []).length > 1}
-            onEdit={() => setReminderModal({ open: true, editing: r })}
-            onDelete={() =>
-              notifSetReminders((notifForm.reminders || []).filter((x) => x.id !== r.id))
-            }
-          />
-        ))}
-        {(notifForm.reminders || []).length < 3 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setReminderModal({ open: true, editing: null })}
-          >
-            Añadir aviso
-          </Button>
-        )}
-      </div>
-    </div>
-
-    {/* Reseñas */}
-    <div>
-      <div className="mb-2 text-xs text-slate-300">Reseña</div>
-      <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">Enviar después de</span>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={2}
-              max={48}
-              value={notifForm.review?.hoursAfter ?? 4}
-              onChange={(e) => notifSetReview({ hoursAfter: Number(e.target.value) })}
-              className="px-3 py-2 border rounded-lg w-28 border-white/10 bg-white/10"
-            />
-            <span className="text-sm">horas (min 2h · máx 48h)</span>
-          </div>
-        </label>
-
-        <Toggle
-          align="left"
-          label="2º correo si no hay reseña"
-          description="Envía un recordatorio adicional"
-          checked={!!notifForm.review?.followup}
-          onChange={(v) => notifSetReview({ followup: v })}
-        />
-      </div>
-    </div>
-
-    {/* Acciones reglas */}
-    <div className="flex items-center gap-2">
-      <Button onClick={notifSave} disabled={mNotifSave.isPending}>
-        {mNotifSave.isPending ? "Guardando…" : "Guardar reglas"}
-      </Button>
-      <Button variant="ghost" onClick={notifCancel} disabled={mNotifSave.isPending}>
-        Cancelar
-      </Button>
-    </div>
-  </div>
-
-  {/* B) Canales de envío (elige uno y configura) */}
-  <div className="space-y-3">
-    <div className={secTitle}>Canales de envío</div>
-
-    {/* Selector de canal activo */}
-    <div className="flex gap-2">
-      {["email", "sms", "whatsapp"].map((c) => (
-        <Button
-          key={c}
-          variant={channelsForm.active === c ? "primary" : "secondary"}
-          onClick={() => channelsSetActive(c)}
-        >
-          {c.toUpperCase()}
-        </Button>
-      ))}
-    </div>
-
-    {/* Panel de configuración según canal */}
-    {channelsForm.active === "email" ? (
-      <div className="grid gap-3 md:grid-cols-2">
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">SMTP Host</span>
-          <input
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.host || ""}
-            onChange={(e) => channelsUpdateEmailSMTP("host", e.target.value)}
-            placeholder="smtp.tu-dominio.com"
-          />
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">SMTP Port</span>
-          <input
-            type="number"
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.port ?? 587}
-            onChange={(e) => channelsUpdateEmailSMTP("port", Number(e.target.value))}
-            placeholder="587"
-          />
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">Secure (TLS/SSL)</span>
-          <select
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.secure ? "true" : "false"}
-            onChange={(e) => channelsUpdateEmailSMTP("secure", e.target.value === "true")}
-          >
-            <option value="false">STARTTLS (587)</option>
-            <option value="true">SSL (465)</option>
-          </select>
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">Usuario</span>
-          <input
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.user || ""}
-            onChange={(e) => channelsUpdateEmailSMTP("user", e.target.value)}
-            placeholder="no-reply@tu-dominio.com"
-          />
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">Password</span>
-          <input
-            type="password"
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.pass || ""}
-            onChange={(e) => channelsUpdateEmailSMTP("pass", e.target.value)}
-            placeholder="********"
-          />
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">From (nombre)</span>
-          <input
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.fromName || ""}
-            onChange={(e) => channelsUpdateEmailSMTP("fromName", e.target.value)}
-            placeholder="Bookitauto"
-          />
-        </label>
-
-        <label className="grid gap-1">
-          <span className="text-xs text-slate-300">From (email)</span>
-          <input
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.fromEmail || ""}
-            onChange={(e) => channelsUpdateEmailSMTP("fromEmail", e.target.value)}
-            placeholder="no-reply@tu-dominio.com"
-          />
-        </label>
-
-        <label className="grid gap-1 md:col-span-2">
-          <span className="text-xs text-slate-300">Reply-To</span>
-          <input
-            className="px-3 py-2 border rounded-lg border-white/10 bg-white/10"
-            value={channelsForm.email?.smtp?.replyTo || ""}
-            onChange={(e) => channelsUpdateEmailSMTP("replyTo", e.target.value)}
-            placeholder="soporte@tu-dominio.com"
-          />
-        </label>
-      </div>
-    ) : (
-      <div className="px-3 py-2 text-sm border rounded-lg border-white/10 bg-white/5">
-        {channelsForm[channelsForm.active]?.note || "Canal no disponible todavía."}
-      </div>
-    )}
-
-    {/* Acciones canales */}
-    <div className="flex items-center gap-2">
-      <Button onClick={channelsSave} disabled={mChannelsSave.isPending}>
-        {mChannelsSave.isPending ? "Guardando…" : "Guardar canal"}
-      </Button>
-      <Button variant="ghost" onClick={channelsCancel} disabled={mChannelsSave.isPending}>
-        Cancelar
-      </Button>
-    </div>
-  </div>
-</section>
-
-
+     
      
 
       {/* Modales */}
@@ -666,59 +342,10 @@ if (!business || !mainForm || !notifSettings || !channels || !notifForm || !chan
         />
       )}
 
-      {reminderModal.open && (
-  <ReminderModal
-    initial={reminderModal.editing}
-    onClose={() => setReminderModal({ open: false, editing: null })}
-    reminders={notifForm.reminders || []}
-    onSave={(entry) => {
-      if (entry.id) {
-        // edit
-        notifSetReminders((notifForm.reminders || []).map((r) => (r.id === entry.id ? entry : r)));
-      } else {
-        // add
-        const id = Math.random().toString(36).slice(2, 10);
-        const next = [...(notifForm.reminders || []), { ...entry, id }];
-        notifSetReminders(next);
-      }
-      setReminderModal({ open: false, editing: null });
-    }}
-    onDelete={(id) => {
-      const next = (notifForm.reminders || []).filter((r) => r.id !== id);
-      notifSetReminders(next);
-      setReminderModal({ open: false, editing: null });
-    }}
-  />
-)}
-
     </div>
   );
 }
 
-/* ===================== Helpers UI ===================== */
-
-function formatBefore(hours) {
-  const h = Number(hours || 0);
-  if (h % 24 === 0) {
-    const d = h / 24;
-    return d === 1 ? "1 día antes" : `${d} días antes`;
-  }
-  return `${h} h antes`;
-}
-
-function ChipReminder({ r, onEdit, onDelete, canDelete }) {
-  return (
-    <div className="inline-flex items-center gap-2 px-2 py-1 border rounded-xl border-white/10 bg-white/10">
-      <span className="text-xs">{formatBefore(r.hoursBefore)}</span>
-      <div className="flex gap-1">
-        <Button variant="ghost" size="sm" onClick={onEdit} title="Editar">Editar</Button>
-        <Button variant="danger" size="sm" onClick={onDelete} disabled={!canDelete} title={canDelete ? "Eliminar" : "Debe haber al menos 1"}>
-          Eliminar
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 /* ===================== Delete sucursal ===================== */
 function DeleteBranchButton({ id }) {
@@ -796,86 +423,3 @@ function BranchModal({ initial, onClose }) {
   );
 }
 
-/* ===================== Modal recordatorio ===================== */
-function ReminderModal({ initial, onClose, reminders, onSave, onDelete }) {
-  const isEdit = !!initial;
-
-  // form: { hoursBefore: number } (si edit => id también)
-  const [unit, setUnit] = useState(() => (initial && initial.hoursBefore % 24 === 0 ? "days" : "hours"));
-  const [value, setValue] = useState(() => {
-    if (!initial) return 24; // 1 día por defecto al crear
-    const hb = Number(initial.hoursBefore || 24);
-    return unit === "days" ? Math.round(hb / 24) : hb;
-  });
-
-  function toHoursBefore(val, unit) {
-    const n = Math.max(1, Number(val || 1));
-    return unit === "days" ? n * 24 : n;
-    // sin límite superior específico (puedes poner 7 días, etc.)
-  }
-
-  function submit(e) {
-    e.preventDefault();
-    const hoursBefore = toHoursBefore(value, unit);
-    const entry = isEdit
-      ? { id: initial.id, hoursBefore }
-      : { hoursBefore };
-    // Validar límites de cantidad ya se hace en el padre
-    onSave(entry);
-  }
-
-  const canDelete = isEdit && reminders.length > 1;
-
-  return (
-    <Portal>
-      <div className="fixed inset-0 grid p-4 bg-black/40 place-items-center" onClick={onClose}>
-        <div className={clsx(glass, "w-[min(440px,95vw)] p-4")} onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="font-semibold">{isEdit ? "Editar aviso" : "Nuevo aviso"}</div>
-            <Button variant="ghost" onClick={onClose}>Cerrar</Button>
-          </div>
-
-          <form onSubmit={submit} className="grid gap-3">
-            <label className="grid gap-1">
-              <span className="text-xs text-slate-300">Enviar</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  className="px-3 py-2 border rounded-lg w-28 border-white/10 bg-white/10"
-                  required
-                />
-                <select
-                  className="px-2 py-2 border rounded-lg border-white/10 bg-white/10"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                >
-                  <option value="hours">horas</option>
-                  <option value="days">días</option>
-                </select>
-                <span className="text-sm">antes</span>
-              </div>
-            </label>
-
-            <div className="flex items-center justify-between">
-              <Button
-                variant="danger"
-                type="button"
-                onClick={() => isEdit && canDelete && onDelete(initial.id)}
-                disabled={!canDelete}
-              >
-                Eliminar
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="secondary" type="button" onClick={onClose}>Cancelar</Button>
-                <Button type="submit">{isEdit ? "Guardar" : "Crear"}</Button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </Portal>
-  );
-}

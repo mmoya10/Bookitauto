@@ -16,6 +16,7 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import MultiSelect from "../../components/common/MultiSelect";
 
 const glassCard =
   "rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.25)]";
@@ -25,23 +26,17 @@ export default function CalendarsPage() {
   const [selectedCalendars, setSelectedCalendars] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedStaff, setSelectedStaff] = useState([]);
-  const [tipo, setTipo] = useState("ambos");
+  const [tipo] = useState("ambos");
   // ya esta
   const [filtersOpen, setFiltersOpen] = useState(false); // móvil: oculto por defecto
 const [estado, setEstado] = useState([]);              // ['asistida','no_asistida','pendiente']
 
-// Deriva estado normalizado de una cita
-const deriveEstado = (e) => {
-  if (e?.status === 'no_show' || e?.noShow) return 'no_asistida';
-  if (typeof e?.paid === 'boolean') return e.paid ? 'asistida' : 'pendiente';
-  return 'pendiente';
-};
+
 
 
   const [showGaps, setShowGaps] = useState(false);
   const [viewType, setViewType] = useState("timeGridWeek");
   const calendarRef = useRef(null);
-  const panRef = useRef(null);
 
   const qc = useQueryClient();
 
@@ -107,13 +102,8 @@ const staffMap = useMemo(
   // ======= Eventos (citas + ausencias + festivos) con nombres =======
 const events = useMemo(() => {
   // Filtrado por estado (si hay estados seleccionados)
-  const byEstado = (e) => {
-    if (!estado.length) return true;          // sin filtro => todas
-    const st = deriveEstado(e);               // 'asistida'|'no_asistida'|'pendiente'
-    return estado.includes(st);
-  };
 
-  const baseCitas = (citas ?? []).filter(byEstado);
+
   // Citas con colores + nombres de calendario/personal en extendedProps
   const apts = (citas ?? []).map((e) => ({
     ...e,
@@ -142,7 +132,7 @@ const events = useMemo(() => {
 
   // Festivos: los mantienes tal cual (ya suelen venir con display:'background')
   return [...apts, ...abs, ...(holidays ?? [])];
-}, [citas, ausencias, holidays, calMap, staffMap, estado]);
+});
 
 
   // huecos libres (solo día/semana)
@@ -183,18 +173,6 @@ const events = useMemo(() => {
   function openEdit(ev)         { setModal({ open:true, start:new Date(ev.start), end:new Date(ev.end), event:ev }); }
 
   // helpers filtros “marcar todo”
-  const allCalIds = (calendars ?? []).map(c=>c.id);
-  const calAllChecked = selectedCalendars.length === allCalIds.length && allCalIds.length>0;
-  const toggleCalAll = () => setSelectedCalendars(calAllChecked ? [] : allCalIds);
-
-  const allCatIds = (categories ?? []).map(c=>c.id);
-  const catAllChecked = selectedCategories.length === allCatIds.length && allCatIds.length>0;
-  const toggleCatAll = () => setSelectedCategories(catAllChecked ? [] : allCatIds);
-
-  const allStaffIds = (staff ?? []).map(s=>s.id);
-  const staffAllChecked = selectedStaff.length === allStaffIds.length && allStaffIds.length>0;
-  const toggleStaffAll = () => setSelectedStaff(staffAllChecked ? [] : allStaffIds);
-
   // al cambiar categorías, ajusta “calendars” seleccionados a los que entran
   useEffect(() => {
     if (!categories || !calendars) return;
@@ -211,7 +189,7 @@ const events = useMemo(() => {
       </header>
 
       {/* ======= Filtros ======= */}
-<section className={clsx(glassCard, "p-4")}>
+<section className={clsx(glassCard, "p-4 relative z-30")}>   {/* ⬅️ z-30 */}
   {/* Botón de abrir/cerrar filtros (solo móvil) */}
   <div className="mb-3 md:hidden">
     <button
@@ -232,70 +210,58 @@ const events = useMemo(() => {
   <div className={clsx(filtersOpen ? "block" : "hidden", "md:block")}>
     <div className="grid gap-3 md:grid-cols-5">
       {/* Calendarios */}
-      <FilterGroup title="Calendarios">
-        <CheckAllRow checked={calAllChecked} onChange={toggleCalAll} />
-        <MultiCheckbox
-          items={(calendars ?? []).map(c => ({ id: c.id, label: c.name }))}
-          values={selectedCalendars}
-          onChange={setSelectedCalendars}
-        />
-      </FilterGroup>
+      {/* Calendarios */}
+<FilterGroup title="Calendarios">
+  <MultiSelect
+    items={(calendars ?? []).map(c => ({ id: c.id, label: c.name }))}
+    values={selectedCalendars}
+    onChange={setSelectedCalendars}
+    placeholder="Todos los calendarios"
+    selectAllLabel="Todos"
+    showSelectAll
+  />
+</FilterGroup>
 
-      {/* Categorías */}
-      <FilterGroup title="Categorías">
-        <CheckAllRow checked={catAllChecked} onChange={toggleCatAll} />
-        <MultiCheckbox
-          items={(categories ?? []).map(c => ({ id: c.id, label: c.name }))}
-          values={selectedCategories}
-          onChange={setSelectedCategories}
-        />
-      </FilterGroup>
+{/* Categorías */}
+<FilterGroup title="Categorías">
+  <MultiSelect
+    items={(categories ?? []).map(c => ({ id: c.id, label: c.name }))}
+    values={selectedCategories}
+    onChange={setSelectedCategories}
+    placeholder="Todas las categorías"
+    selectAllLabel="Todas"
+    showSelectAll
+  />
+</FilterGroup>
 
-      {/* Personal */}
-      <FilterGroup title="Personal">
-        <CheckAllRow checked={staffAllChecked} onChange={toggleStaffAll} />
-        <MultiCheckbox
-          items={(staff ?? []).map(s => ({ id: s.id, label: s.name }))}
-          values={selectedStaff}
-          onChange={setSelectedStaff}
-        />
-      </FilterGroup>
+{/* Personal */}
+<FilterGroup title="Personal">
+  <MultiSelect
+    items={(staff ?? []).map(s => ({ id: s.id, label: s.name }))}
+    values={selectedStaff}
+    onChange={setSelectedStaff}
+    placeholder="Todo el personal"
+    selectAllLabel="Todo"
+    showSelectAll
+  />
+</FilterGroup>
 
-      {/* Tipo */}
-      <FilterGroup title="Tipo">
-        <div className="flex flex-col gap-2 text-sm text-slate-300">
-          {[
-            { id: "cita", label: "Citas" },
-            { id: "ausencia", label: "Ausencias" },
-            { id: "ambos", label: "Ambos" },
-          ].map((t) => (
-            <label key={t.id} className="inline-flex items-center gap-2">
-              <input
-                type="radio"
-                name="tipo"
-                value={t.id}
-                checked={tipo === t.id}
-                onChange={(e) => setTipo(e.target.value)}
-                className="rounded size-4 border-white/20 bg-white/10"
-              />
-              {t.label}
-            </label>
-          ))}
-        </div>
-      </FilterGroup>
+{/* Estado */}
+<FilterGroup title="Estado">
+  <MultiSelect
+    items={[
+      { id: 'asistida',    label: 'Asistidas' },
+      { id: 'no_asistida', label: 'No asistidas' },
+      { id: 'pendiente',   label: 'Pendientes' },
+    ]}
+    values={estado}
+    onChange={setEstado}
+    placeholder="Todos los estados"
+    selectAllLabel="Todos"
+    showSelectAll
+  />
+</FilterGroup>
 
-      {/* Estado */}
-      <FilterGroup title="Estado">
-        <MultiCheckbox
-          items={[
-            { id: 'asistida',     label: 'Asistidas' },
-            { id: 'no_asistida',  label: 'No asistidas' },
-            { id: 'pendiente',    label: 'Pendientes' },
-          ]}
-          values={estado}
-          onChange={setEstado}
-        />
-      </FilterGroup>
     </div>
   </div>
 </section>
@@ -323,7 +289,7 @@ const events = useMemo(() => {
 
 
       {/* ======= Calendario ======= */}
-      <section className={clsx(glassCard, "p-3")}>
+<section className={clsx(glassCard, "p-3 relative z-10")}>   {/* ⬅️ z-10 */}
 
         <FullCalendar
           ref={calendarRef}
@@ -433,33 +399,7 @@ function FilterGroup({ title, children }) {
     </div>
   );
 }
-function CheckAllRow({ checked, onChange }) {
-  return (
-    <label className="inline-flex items-center gap-2 mb-1 text-sm text-slate-200">
-      <input type="checkbox" className="rounded size-4 border-white/20 bg-white/10" checked={checked} onChange={onChange}/>
-      Marcar todo
-    </label>
-  );
-}
-function MultiCheckbox({ items, values, onChange }) {
-  const toggle = (id) => onChange(values.includes(id) ? values.filter(v=>v!==id) : [...values, id]);
-  return (
-    <div className="grid gap-2 pr-1 overflow-auto max-h-24"> {/* ✅ máx 3 aprox + scroll */}
-      {items.map((it) => (
-        <label key={it.id} className="inline-flex items-center gap-2 text-sm text-slate-200">
-          <input
-            type="checkbox"
-            checked={values.includes(it.id)}
-            onChange={() => toggle(it.id)}
-            className="rounded size-4 border-white/20 bg-white/10"
-          />
-          {it.label}
-        </label>
-      ))}
-      {!items.length && <div className="text-xs text-slate-400">Sin opciones</div>}
-    </div>
-  );
-}
+
 
 /* ====== Form cita ====== */
 function AppointmentForm({ mode, event, calendars, staff, initialStart, initialEnd, onSubmit, submitting }) {
