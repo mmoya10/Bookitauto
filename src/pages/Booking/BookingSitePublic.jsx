@@ -1,11 +1,10 @@
 // src/pages/Booking/BookingSitePublic.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
-import MultiSelect from "../../components/common/MultiSelect";
 import { fetchBusiness, fetchBranches } from "../../api/business";
 import {
   fetchCategories,
@@ -17,6 +16,9 @@ import {
 const glass =
   "rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
 
+const cardGlass =
+  "border border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition";
+
 const slug = (s = "") =>
   s
     .toLowerCase()
@@ -25,17 +27,24 @@ const slug = (s = "") =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-/* ──────────────────────────────────────────────────────────────
-   Wizard Booking (4 pasos con barra de progreso + footer sticky)
-   Pasos:
-   1) Servicio principal + extras
-   2) Profesional
-   3) Día y hora
-   4) Datos cliente + Confirmación
-   ────────────────────────────────────────────────────────────── */
-
 export default function BookingSitePublic() {
-  const { bizSlug, branchSlug, siteSlug } = useParams();
+  const { branchSlug, siteSlug } = useParams();
+
+  // Confirmación
+const [confirm, setConfirm] = useState(null); // { name, dateText, timeText, mapsQuery }
+
+function fmtDateLong(d) {
+  try {
+    return d.toLocaleDateString("es-ES", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+  } catch {
+    return d?.toLocaleDateString?.() || "";
+  }
+}
+
 
   // Datos base
   const { data: business } = useQuery({ queryKey: ["biz"], queryFn: fetchBusiness });
@@ -68,30 +77,27 @@ export default function BookingSitePublic() {
   const mainCalendars = allCals.filter((c) => c.type === "main");
   const extraCalendars = allCals.filter((c) => c.type === "extra");
 
-  // ─── Estado del Wizard ───────────────────────────────────────
+  // Wizard
   const [step, setStep] = useState(1); // 1..4
-  const stepsMeta = [
-    { id: 1, label: "Servicio" },
-    { id: 2, label: "Profesional" },
-    { id: 3, label: "Fecha y hora" },
-    { id: 4, label: "Tus datos" },
-  ];
 
-  // Paso 1: servicio principal + extras
+  // Paso 1: servicio principal + extras (en modal)
   const [mainId, setMainId] = useState("");
   const selectedMain = mainCalendars.find((c) => c.id === mainId) || null;
+  const [extraIds, setExtraIds] = useState([]); // array de ids (string)
+  const [extrasModal, setExtrasModal] = useState(null); // { main, chosen:Set<string> } | null
 
   const supportedExtras = useMemo(() => {
-    if (!selectedMain) return [];
-    const ids = selectedMain.extrasSupported || [];
+    const base = extrasModal?.main || selectedMain;
+    if (!base) return [];
+    const ids = base.extrasSupported || [];
     return extraCalendars.filter((e) => ids.includes(e.id));
-  }, [selectedMain, extraCalendars]);
-
-  const [extraIds, setExtraIds] = useState([]);
+  }, [extrasModal, selectedMain, extraCalendars]);
 
   // Totales (precio/duración)
   const { totalPrice, totalDuration } = useMemo(() => {
-    let price = Number(selectedMain?.price || 0);
+    let base = Number(selectedMain?.price || 0);
+    const offer = selectedMain?.offerPrice != null ? Number(selectedMain.offerPrice) : null;
+    let price = offer != null ? offer : base;
     let dur = Number(selectedMain?.duration || 0);
     for (const id of extraIds) {
       const ex = extraCalendars.find((e) => e.id === id);
@@ -102,7 +108,7 @@ export default function BookingSitePublic() {
     return { totalPrice: price, totalDuration: dur };
   }, [selectedMain, extraIds, extraCalendars]);
 
-  // Paso 2: profesional
+  // Paso 2: profesional (tarjetas)
   const staffOptions = useMemo(() => {
     if (!selectedMain) return [];
     const ids = selectedMain.staffIds || [];
@@ -110,9 +116,9 @@ export default function BookingSitePublic() {
   }, [selectedMain, staff]);
   const [staffChoice, setStaffChoice] = useState("random"); // "random" | staffId
 
-  // Paso 3: fecha y hora (disponibilidad fake)
+  // Paso 3: fecha y hora (disponibilidad demo)
   const [monthBase, setMonthBase] = useState(() => new Date());
-  const [selectedDay, setSelectedDay] = useState(null); // Date
+  const [selectedDay, setSelectedDay] = useState(null); // Date | null
   const [selectedSlot, setSelectedSlot] = useState("");
 
   function daysOfMonth(baseDate) {
@@ -126,7 +132,6 @@ export default function BookingSitePublic() {
   }
   const monthlyDays = daysOfMonth(monthBase);
 
-  // Disponibilidad demo: L-S 10:00–18:00 cada 30'
   function generateSlots(date) {
     if (!selectedMain) return [];
     const weekday = date.getDay(); // 0 D
@@ -155,7 +160,7 @@ export default function BookingSitePublic() {
 
   // Validaciones por paso
   const stepValid = useMemo(() => {
-    if (step === 1) return !!selectedMain; // servicio principal elegido
+    if (step === 1) return !!selectedMain;
     if (step === 2) return !!(staffChoice === "random" || staffOptions.find((s) => s.id === staffChoice));
     if (step === 3) return !!(selectedDay && selectedSlot);
     if (step === 4) {
@@ -175,31 +180,28 @@ export default function BookingSitePublic() {
     setStep((s) => Math.max(1, s - 1));
   }
 
-  // Confirmar (solo demo)
+  // Confirmar (demo)
   function reservar() {
-    if (!stepValid) return;
-    const resumen = {
-      negocio: business?.nombre,
-      sucursal: business?.branchMode ? currentBranch?.nombre : "(única)",
-      site: currentSite?.name,
-      servicio: selectedMain?.name,
-      extras:
-        extraIds.map((id) => extraCalendars.find((e) => e.id === id)?.name).filter(Boolean) || [],
-      profesional:
-        staffChoice === "random"
-          ? "Aleatorio"
-          : staff.find((s) => s.id === staffChoice)?.name || "",
-      fecha: selectedDay?.toLocaleDateString(),
-      hora: selectedSlot,
-      total: `${totalPrice.toFixed(2)} €`,
-      duracion: `${totalDuration} min`,
-      cliente: `${form.nombre} ${form.apellidos} - ${form.email} - ${form.telefono}`,
-    };
-    console.log("RESERVA DEMO", resumen);
-    alert("Reserva creada (demo). Mira la consola para ver el detalle.");
-  }
+  if (!stepValid) return;
 
-  // Context fail
+  const dateText = selectedDay ? fmtDateLong(selectedDay) : "";
+  const timeText = selectedSlot || "";
+  const personName = form?.nombre?.trim() ? form.nombre.trim() : "cliente";
+
+  // Query para Google Maps: sucursal si existe, si no el negocio
+  const mapsQuery = business?.branchMode && currentBranch?.nombre
+    ? `${business?.nombre || ""} ${currentBranch?.nombre || ""}`
+    : business?.nombre || currentSite?.name || "Ubicación";
+
+  setConfirm({
+    name: personName,
+    dateText,
+    timeText,
+    mapsQuery,
+  });
+}
+
+
   if (!okContext) {
     return (
       <div className="p-4 text-zinc-100">
@@ -213,269 +215,408 @@ export default function BookingSitePublic() {
     );
   }
 
-  // ─── UI ──────────────────────────────────────────────────────
   return (
-    <div className="relative p-4 space-y-5 pb-28 text-zinc-100">
-      {/* Encabezado */}
-      <header className="space-y-1">
-        <h1 className="text-xl font-semibold">
-          {business?.nombre}
-          {business?.branchMode && currentBranch ? ` — ${currentBranch.nombre}` : ""}
-        </h1>
-        <div className="text-sm text-slate-300">{currentSite?.name}</div>
-      </header>
+  <div
+    className={clsx(
+      "relative p-4 space-y-5 pb-28 text-zinc-100 min-h-screen",
+      "bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.20),transparent_40%),radial-gradient(1200px_600px_at_90%_90%,rgba(34,211,238,0.20),transparent_40%),linear-gradient(120deg,#0f172a,#1e293b)]"
+    )}
+  >
+    {confirm ? (
+      <ConfirmationScreen
+        confirm={confirm}
+        onClose={() => {
+          setConfirm(null);
+          // Reset básico del flujo (opcional)
+          setStep(1);
+          setMainId("");
+          setExtraIds([]);
+          setSelectedDay(null);
+          setSelectedSlot("");
+          setStaffChoice("random");
+        }}
+      />
+    ) : (
+      <>
+        {/* Encabezado */}
+        <header className="space-y-1">
+          <h1 className="text-xl font-semibold">
+            {business?.nombre}
+            {business?.branchMode && currentBranch ? ` — ${currentBranch.nombre}` : ""}
+          </h1>
+          <div className="text-sm text-slate-300">{currentSite?.name}</div>
+        </header>
 
-      {/* Barra de progreso */}
-      <section className={clsx(glass, "p-3")}>
-        <div className="grid grid-cols-4 gap-2">
-          {stepsMeta.map((s) => {
-            const active = s.id === step;
-            const done = s.id < step;
-            return (
-              <div
-                key={s.id}
-                className={clsx(
-                  "flex items-center justify-center rounded-xl px-3 py-2 text-sm border",
-                  active
-                    ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-                    : done
-                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                    : "border-white/10 bg-white/5 text-slate-300"
+        {/* Paso 1 */}
+        {step === 1 && (
+          <Step1Servicio
+            categories={categories}
+            mainCalendars={mainCalendars}
+            onPick={(main) => setExtrasModal({ main, chosen: new Set() })}
+          />
+        )}
+
+        {/* Paso 2 */}
+        {step === 2 && (
+          <Step2ProfesionalCards
+            staffOptions={staffOptions}
+            staffChoice={staffChoice}
+            setStaffChoice={setStaffChoice}
+          />
+        )}
+
+        {/* Paso 3 */}
+        {step === 3 && (
+          <Step3FechaHora
+            monthBase={monthBase}
+            setMonthBase={setMonthBase}
+            monthlyDays={monthlyDays}
+            selectedDay={selectedDay}
+            setSelectedDay={setSelectedDay}
+            availableSlots={availableSlots}
+            selectedSlot={selectedSlot}
+            setSelectedSlot={setSelectedSlot}
+            selectedMain={selectedMain}
+            staffOptions={staffOptions}
+            staffChoice={staffChoice}
+            setStaffChoice={setStaffChoice}
+          />
+        )}
+
+        {/* Paso 4 */}
+        {step === 4 && (
+          <Step4Datos
+            form={form}
+            setForm={setForm}
+            selectedMain={selectedMain}
+            extraIds={extraIds}
+            extraCalendars={extraCalendars}
+            totalPrice={totalPrice}
+            totalDuration={totalDuration}
+            selectedDay={selectedDay}
+            selectedSlot={selectedSlot}
+            staffChoice={staffChoice}
+            staff={staff}
+          />
+        )}
+
+        {/* Footer fijo */}
+        <footer className="fixed bottom-0 left-0 right-0 z-50">
+          <div className="max-w-6xl p-3 mx-auto">
+            <div
+              className={clsx(
+                glass,
+                "p-3 flex flex-col sm:flex-row items-center gap-3 sm:justify-between"
+              )}
+            >
+              <div className="text-xs text-slate-300">
+                {selectedMain ? (
+                  <>
+                    <span className="font-medium text-zinc-100">{selectedMain.name}</span>{" "}
+                    · {totalDuration} min · {totalPrice.toFixed(2)} €
+                    {/* Extras en el footer */}
+                    {extraIds?.length ? (
+                      <>
+                        {" · "}
+                        <span className="text-slate-200">
+                          Extras:{" "}
+                          {extraIds
+                            .map((id) => extraCalendars.find((e) => e.id === id)?.name)
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  "Selecciona un servicio para empezar"
                 )}
-              >
-                {s.id}. {s.label}
               </div>
-            );
-          })}
-        </div>
-      </section>
 
-      {/* Contenido del paso */}
-      {step === 1 && (
-        <Step1Servicio
-          categories={categories}
-          mainCalendars={mainCalendars}
-          selectedMain={selectedMain}
-          setMainId={setMainId}
-          supportedExtras={supportedExtras}
-          extraIds={extraIds}
-          setExtraIds={setExtraIds}
-          totalPrice={totalPrice}
-          totalDuration={totalDuration}
-        />
-      )}
-      {step === 2 && (
-        <Step2Profesional
-          staffOptions={staffOptions}
-          staffChoice={staffChoice}
-          setStaffChoice={setStaffChoice}
-        />
-      )}
-      {step === 3 && (
-        <Step3FechaHora
-          monthBase={monthBase}
-          setMonthBase={setMonthBase}
-          monthlyDays={monthlyDays}
-          selectedDay={selectedDay}
-          setSelectedDay={setSelectedDay}
-          availableSlots={availableSlots}
-          selectedSlot={selectedSlot}
-          setSelectedSlot={setSelectedSlot}
-          selectedMain={selectedMain}
-        />
-      )}
-      {step === 4 && (
-        <Step4Datos
-          form={form}
-          setForm={setForm}
-          selectedMain={selectedMain}
-          extraIds={extraIds}
-          extraCalendars={extraCalendars}
-          totalPrice={totalPrice}
-          totalDuration={totalDuration}
-          selectedDay={selectedDay}
-          selectedSlot={selectedSlot}
-          staffChoice={staffChoice}
-          staff={staff}
-        />
-      )}
-
-      {/* Footer fijo de navegación + resumen corto */}
-      <footer className="fixed bottom-0 left-0 right-0 z-50">
-        <div className="max-w-6xl p-3 mx-auto">
-          <div
-            className={clsx(
-              glass,
-              "p-3 flex flex-col sm:flex-row items-center gap-3 sm:justify-between"
-            )}
-          >
-            <div className="text-xs text-slate-300">
-              {selectedMain ? (
-                <>
-                  <span className="font-medium text-zinc-100">{selectedMain.name}</span>{" "}
-                  · {totalDuration} min · {totalPrice.toFixed(2)} €
-                </>
-              ) : (
-                "Selecciona un servicio para empezar"
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={goPrev} disabled={step === 1}>
-                ← Anterior
-              </Button>
-              {step < 4 ? (
-                <Button variant="primary" onClick={goNext} disabled={!stepValid}>
-                  Siguiente →
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={goPrev} disabled={step === 1}>
+                  ← Anterior
                 </Button>
-              ) : (
-                <Button variant="primary" onClick={reservar} disabled={!stepValid}>
-                  Confirmar reserva
-                </Button>
-              )}
+                {step < 4 ? (
+                  <Button variant="primary" onClick={goNext} disabled={!stepValid}>
+                    Siguiente →
+                  </Button>
+                ) : (
+                  <Button variant="primary" onClick={reservar} disabled={!stepValid}>
+                    Confirmar reserva
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
-    </div>
-  );
+        </footer>
+
+        {/* Modal de extras */}
+        {extrasModal && (
+          <ExtrasModal
+            main={extrasModal.main}
+            extras={supportedExtras}
+            chosen={extrasModal.chosen}
+            onClose={() => setExtrasModal(null)}
+            onConfirm={(chosenIds) => {
+              setMainId(extrasModal.main.id);
+              setExtraIds(chosenIds);
+              setExtrasModal(null);
+              setStep(2); // -> al confirmar extras, pasa a Profesional
+            }}
+          />
+        )}
+      </>
+    )}
+  </div>
+);
+
 }
 
-/* ──────────────────────────────────────────────────────────────
-   Subcomponentes de cada paso
-   ────────────────────────────────────────────────────────────── */
+/* Paso 1 – Servicios (tarjetas horizontales) */
+function Step1Servicio({ categories, mainCalendars, onPick }) {
+  const [catId, setCatId] = useState("all");
 
-function Step1Servicio({
-  categories,
-  mainCalendars,
-  selectedMain,
-  setMainId,
-  supportedExtras,
-  extraIds,
-  setExtraIds,
-  totalPrice,
-  totalDuration,
-}) {
+  const filtered = mainCalendars.filter((c) =>
+    catId === "all" ? true : c.categoryId === catId
+  );
+  const categoriesToRender =
+    catId === "all" ? categories : categories.filter((c) => c.id === catId);
+
   return (
     <section className={clsx(glass, "p-4")}>
-      <h2 className="mb-3 text-base font-semibold">1) Elige servicio</h2>
+      <h2 className="mb-4 text-xl font-semibold text-center sm:text-2xl">
+        Elige servicio
+      </h2>
 
-      {/* Servicios por categoría */}
+      {/* Filtro de categoría (siempre visible) */}
+      <div className="mb-4">
+        <div className="grid gap-2 sm:max-w-xs">
+          <select
+            value={catId}
+            onChange={(e) => setCatId(e.target.value)}
+            className="px-3 py-2 text-sm border rounded-xl border-white/15 bg-white/10"
+          >
+            <option value="all">Todas las categorías</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="grid gap-4">
-        {categories.map((cat) => {
-          const cals = mainCalendars.filter((c) => c.categoryId === cat.id);
+        {categoriesToRender.map((cat) => {
+          const cals = filtered.filter((c) => c.categoryId === cat.id);
           if (!cals.length) return null;
           return (
             <div key={cat.id} className="space-y-2">
-              <div className="text-sm font-semibold">{cat.label}</div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {cals.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => {
-                      setMainId(c.id);
-                      setExtraIds([]);
-                    }}
-                    className={clsx(
-                      "text-left overflow-hidden border rounded-2xl",
-                      "border-white/10 bg-white/5 hover:bg-white/10"
-                    )}
-                  >
-                    <img
-                      src={c.imageUrl || "https://placehold.co/640x360?text=Servicio"}
-                      alt=""
-                      className="object-cover w-full border-b h-36 border-white/10"
-                    />
-                    <div className="p-3 space-y-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="text-sm font-semibold">{c.name}</div>
-                        <div className="text-sm shrink-0">{Number(c.price || 0).toFixed(2)} €</div>
+              <div className="text-base font-semibold sm:text-lg">{cat.label}</div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {cals.map((c) => {
+                  const hasOffer =
+                    c.offerPrice != null && Number(c.offerPrice) < Number(c.price || 0);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => onPick(c)}
+                      className={clsx(cardGlass, "w-full text-left p-3")}
+                    >
+                      <div className="flex items-stretch gap-3">
+                        <img
+                          src={c.imageUrl || "https://placehold.co/200x140?text=Servicio"}
+                          alt=""
+                          className="object-cover w-40 border h-28 rounded-xl border-white/10"
+                        />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="text-base font-semibold truncate sm:text-lg">
+                            {c.name}
+                          </div>
+                          <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
+                            {c.description}
+                          </div>
+
+                          <div className="mt-2 text-sm">
+                            {hasOffer ? (
+                              <div>
+                                <span className="mr-1 line-through opacity-70">
+                                  {Number(c.price || 0).toFixed(2)} €
+                                </span>
+                                <span className="font-semibold">
+                                  {Number(c.offerPrice).toFixed(2)} €
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="font-semibold">
+                                {Number(c.price || 0).toFixed(2)} €
+                              </div>
+                            )}
+                            <div className="text-xs text-slate-300">{c.duration} min</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-300">{c.description}</div>
-                      <div className="text-xs">
-                        Duración: <b>{c.duration} min</b>
-                      </div>
-                      {selectedMain?.id === c.id && (
-                        <div className="mt-2 text-xs text-emerald-200">Seleccionado ✓</div>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );
         })}
       </div>
-
-      {/* Extras del servicio seleccionado */}
-      {selectedMain && (
-        <div className="p-3 mt-4 border rounded-xl border-white/10 bg-white/5">
-          <div className="text-sm font-semibold">Extras (opcionales)</div>
-          <div className="mt-2">
-            {!!supportedExtras.length ? (
-              <MultiSelect
-                items={supportedExtras.map((e) => ({
-                  id: e.id,
-                  label: `${e.name}${
-                    e.price != null ? ` (+${e.price.toFixed(2)} €)` : ""
-                  }${e.duration != null ? ` / ${e.duration}min` : ""}`,
-                }))}
-                values={extraIds}
-                onChange={setExtraIds}
-              />
-            ) : (
-              <div className="text-sm text-slate-300">Este servicio no tiene extras.</div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            <Stat label="Total" value={`${totalPrice.toFixed(2)} €`} />
-            <Stat label="Duración" value={`${totalDuration} min`} />
-          </div>
-        </div>
-      )}
     </section>
   );
 }
 
-function Step2Profesional({ staffOptions, staffChoice, setStaffChoice }) {
+
+
+/* Modal de Extras (tarjetas pequeñas con + / ✓) */
+function ExtrasModal({ main, extras, chosen, onClose, onConfirm }) {
+  const [selected, setSelected] = useState(new Set(chosen || []));
+
+  const toggle = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/50 p-4">
+      <div className={clsx(glass, "w-[min(96vw,720px)] p-5")}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold">Añadir extras — {main.name}</h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+
+        {extras.length ? (
+          // -> una sola columna
+          <div className="grid gap-3">
+            {extras.map((e) => {
+              const isSel = selected.has(e.id);
+              return (
+                <div key={e.id} className={clsx(cardGlass, "p-2 flex gap-2 items-center")}>
+                  <img
+                    src={e.imageUrl || "https://placehold.co/120x90?text=Extra"}
+                    alt=""
+                    className="object-cover w-24 h-20 border rounded-lg border-white/10"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold truncate">{e.name}</div>
+                    <div className="text-xs text-slate-300 line-clamp-2">{e.description || "—"}</div>
+                    <div className="flex items-center gap-2 mt-1 text-xs">
+                      {e.price != null && <span>{Number(e.price).toFixed(2)} €</span>}
+                      {e.duration != null && <span>· {e.duration} min</span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggle(e.id)}
+                    className={clsx(
+                      "rounded-full w-8 h-8 border flex items-center justify-center",
+                      isSel
+                        ? "border-emerald-400/50 bg-emerald-500/30 text-emerald-100"
+                        : "border-white/15 bg-white/10 hover:bg-white/15"
+                    )}
+                    title={isSel ? "Quitar" : "Añadir"}
+                  >
+                    {isSel ? "✓" : "+"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-sm text-slate-300">Este servicio no tiene extras.</div>
+        )}
+
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onConfirm(Array.from(selected))}
+          >
+            Continuar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* Paso 2 – Profesional (tarjetas) */
+function Step2ProfesionalCards({ staffOptions, staffChoice, setStaffChoice }) {
+  const Card = ({ active, children, onClick }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        cardGlass,
+        "p-3 text-left flex gap-3 items-center w-full",
+        active && "ring-2 ring-cyan-400/40"
+      )}
+    >
+      {children}
+    </button>
+  );
+
   return (
     <section className={clsx(glass, "p-4")}>
       <h2 className="mb-3 text-base font-semibold">2) Elige profesional</h2>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setStaffChoice("random")}
-          className={clsx(
-            "px-3 py-2 rounded-xl border",
-            staffChoice === "random"
-              ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-              : "border-white/10 bg-white/10"
-          )}
-        >
-          Aleatorio
-        </button>
+
+<div className="grid gap-3 md:grid-cols-2">
+        <Card active={staffChoice === "random"} onClick={() => setStaffChoice("random")}>
+            <div className="flex items-stretch w-full gap-3">
+    <img
+      src="https://placehold.co/200x140?text=Aleatorio"
+      className="object-cover w-40 border h-28 rounded-xl border-white/10"
+      alt=""
+    />
+    <div className="flex-1 min-w-0">
+      <div className="text-base font-semibold truncate sm:text-lg">Aleatorio</div>
+      <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
+        Asignaremos la mejor opción disponible
+      </div>
+    </div>
+  </div>
+
+        </Card>
+
         {staffOptions.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => setStaffChoice(s.id)}
-            className={clsx(
-              "px-3 py-2 rounded-xl border",
-              staffChoice === s.id
-                ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-                : "border-white/10 bg-white/10"
-            )}
-            title={s.name}
-          >
-            {s.name}
-          </button>
+          <Card key={s.id} active={staffChoice === s.id} onClick={() => setStaffChoice(s.id)}>
+              <div className="flex items-stretch w-full gap-3">
+    <img
+      src={s.imageUrl || "https://placehold.co/200x140?text=Staff"}
+      className="object-cover w-40 border h-28 rounded-xl border-white/10"
+      alt=""
+    />
+    <div className="flex-1 min-w-0">
+      <div className="text-base font-semibold truncate sm:text-lg">{s.name}</div>
+      <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
+        {s.bio || "Profesional del equipo"}
+      </div>
+    </div>
+  </div>
+
+          </Card>
         ))}
       </div>
     </section>
   );
 }
 
+/* Paso 3 – Fecha y hora */
 function Step3FechaHora({
   monthBase,
   setMonthBase,
@@ -486,13 +627,36 @@ function Step3FechaHora({
   selectedSlot,
   setSelectedSlot,
   selectedMain,
+    staffOptions,
+  staffChoice,
+  setStaffChoice,
+
 }) {
   return (
     <section className={clsx(glass, "p-4")}>
       <h2 className="mb-3 text-base font-semibold">3) Elige día y hora</h2>
+{/* Selector de profesional (si hay opciones) */}
+{selectedMain && (
+  <div className="mb-3">
+    <label className="block mb-1 text-xs text-slate-300">Profesional</label>
+    <select
+      value={staffChoice}
+      onChange={(e) => setStaffChoice(e.target.value)}
+      className="px-3 py-2 text-sm border rounded-xl border-white/15 bg-white/10"
+    >
+      <option value="random">Aleatorio</option>
+      { (selectedMain.staffIds || [])
+        .map(id => staffOptions.find(s => s.id === id))
+        .filter(Boolean)
+        .map(s => (
+          <option key={s.id} value={s.id}>{s.name}</option>
+        ))
+      }
+    </select>
+  </div>
+)}
 
       <div className="grid gap-3 md:grid-cols-[1fr_280px]">
-        {/* Calendario mensual simple */}
         <div className="p-3 border rounded-xl border-white/10 bg-white/5">
           <div className="flex items-center justify-between mb-2">
             <Button
@@ -546,38 +710,66 @@ function Step3FechaHora({
           </div>
         </div>
 
-        {/* Slots del día */}
         <div className="p-3 border rounded-xl border-white/10 bg-white/5">
           <div className="mb-2 text-xs text-slate-300">Horas disponibles</div>
-          <div className="grid grid-cols-3 gap-2">
-            {availableSlots.length ? (
-              availableSlots.map((hh) => (
-                <button
-                  key={hh}
-                  type="button"
-                  onClick={() => setSelectedSlot(hh)}
-                  className={clsx(
-                    "px-2 py-1 rounded-md border text-sm",
-                    selectedSlot === hh
-                      ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-                      : "border-white/10 bg-white/10 hover:bg-white/15"
-                  )}
-                >
-                  {hh}
-                </button>
-              ))
-            ) : (
-              <div className="col-span-3 text-sm text-slate-300">
-                {selectedDay ? "Sin franjas para este día." : "Selecciona un día."}
-              </div>
-            )}
-          </div>
+          {/* Partición mañana / tarde */}
+{availableSlots.length ? (() => {
+  const toMinutes = (t) => {
+    const [H, M] = t.split(":").map(Number);
+    return H * 60 + M;
+    };
+  const morning = availableSlots.filter(h => toMinutes(h) < 14 * 60);
+  const afternoon = availableSlots.filter(h => toMinutes(h) >= 14 * 60);
+
+  const SlotBtn = ({ hh }) => (
+    <button
+      key={hh}
+      type="button"
+      onClick={() => setSelectedSlot(hh)}
+      className={clsx(
+        "px-2 py-1 rounded-md border text-sm",
+        selectedSlot === hh
+          ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
+          : "border-white/10 bg-white/10 hover:bg-white/15"
+      )}
+    >
+      {hh}
+    </button>
+  );
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <div className="mb-1 text-xs text-slate-300">Mañana</div>
+        <div className="grid grid-cols-3 gap-2">
+          {morning.length ? morning.map(h => <SlotBtn hh={h} />) : (
+            <div className="col-span-3 text-sm text-slate-300">—</div>
+          )}
+        </div>
+      </div>
+      <div>
+        <div className="mb-1 text-xs text-slate-300">Tarde</div>
+        <div className="grid grid-cols-3 gap-2">
+          {afternoon.length ? afternoon.map(h => <SlotBtn hh={h} />) : (
+            <div className="col-span-3 text-sm text-slate-300">—</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+})() : (
+  <div className="col-span-3 text-sm text-slate-300">
+    {selectedDay ? "Sin franjas para este día." : "Selecciona un día."}
+  </div>
+)}
+
         </div>
       </div>
     </section>
   );
 }
 
+/* Paso 4 – Datos cliente */
 function Step4Datos({
   form,
   setForm,
@@ -591,9 +783,14 @@ function Step4Datos({
   staffChoice,
   staff,
 }) {
+    const [paymentMethod, setPaymentMethod] = useState("online"); // 'online' | 'store'
+    const [showSummary, setShowSummary] = useState(false);
+
+
   const extrasNames =
     extraIds.map((id) => extraCalendars.find((e) => e.id === id)?.name).filter(Boolean) || [];
-  const staffName = staffChoice === "random" ? "Aleatorio" : staff.find((s) => s.id === staffChoice)?.name;
+  const staffName =
+    staffChoice === "random" ? "Aleatorio" : staff.find((s) => s.id === staffChoice)?.name;
 
   return (
     <section className={clsx(glass, "p-4")}>
@@ -636,21 +833,181 @@ function Step4Datos({
         />
         Acepto recibir confirmación y recordatorios
       </label>
-
-      <div className="grid gap-2 mt-4 sm:grid-cols-2">
-        <Stat label="Servicio" value={selectedMain?.name || "—"} />
-        <Stat label="Profesional" value={staffName || "—"} />
-        <Stat label="Fecha" value={selectedDay ? selectedDay.toLocaleDateString() : "—"} />
-        <Stat label="Hora" value={selectedSlot || "—"} />
-        <Stat label="Extras" value={extrasNames.length ? extrasNames.join(", ") : "Ninguno"} />
-        <Stat label="Duración total" value={`${totalDuration} min`} />
-        <Stat label="Total" value={`${totalPrice.toFixed(2)} €`} />
+      {/* Botones de pago */}
+      <div className="flex gap-2 mt-3">
+        <button
+          type="button"
+          onClick={() => setPaymentMethod("online")}
+          className={clsx(
+            "px-3 py-2 rounded-xl border text-sm",
+            paymentMethod === "online"
+              ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-100"
+              : "border-white/15 bg-white/10 hover:bg-white/15"
+          )}
+        >
+          Pagar online
+        </button>
+        <button
+          type="button"
+          onClick={() => setPaymentMethod("store")}
+          className={clsx(
+            "px-3 py-2 rounded-xl border text-sm",
+            paymentMethod === "store"
+              ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
+              : "border-white/15 bg-white/10 hover:bg-white/15"
+          )}
+        >
+          Pagar en tienda
+        </button>
       </div>
+
+      {/* Sección de pago (solo si online) */}
+      {paymentMethod === "online" && (
+        <div className="p-3 mt-3 border rounded-xl border-white/10 bg-white/5">
+          <div className="mb-2 text-sm font-semibold">Pago</div>
+          {/* Placeholder de pago: sustituye por tu integracion (Stripe/TPV) */}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="Titular">
+              <Input
+                value={form.cardName || ""}
+                onChange={(e) => setForm((f) => ({ ...f, cardName: e.target.value }))}
+              />
+            </Field>
+            <Field label="Número tarjeta">
+              <Input
+                value={form.cardNumber || ""}
+                onChange={(e) => setForm((f) => ({ ...f, cardNumber: e.target.value }))}
+              />
+            </Field>
+            <Field label="Caducidad (MM/AA)">
+              <Input
+                value={form.cardExp || ""}
+                onChange={(e) => setForm((f) => ({ ...f, cardExp: e.target.value }))}
+              />
+            </Field>
+            <Field label="CVC">
+              <Input
+                value={form.cardCvc || ""}
+                onChange={(e) => setForm((f) => ({ ...f, cardCvc: e.target.value }))}
+              />
+            </Field>
+          </div>
+          <div className="mt-2 text-xs text-slate-300">
+            * Demo UI. Reemplaza por el elemento seguro de tu pasarela.
+          </div>
+        </div>
+      )}
+
+      {/* Resumen con mini-imágenes (acordeón) */}
+<div className="mt-4">
+  {/* Encabezado toggle */}
+  <button
+    type="button"
+    onClick={() => setShowSummary((s) => !s)}
+    className={clsx(
+      "w-full flex items-center justify-between px-3 py-2 rounded-xl border",
+      "border-white/10 bg-white/5 hover:bg-white/10"
+    )}
+    aria-expanded={showSummary}
+    aria-controls="resumen-reserva"
+  >
+    <span className="text-sm font-semibold">
+      {showSummary ? "Ocultar datos de tu reserva" : "Ver datos de tu reserva"}
+    </span>
+    {/* Chevrón */}
+    <svg
+      className={clsx("w-4 h-4 transition-transform", showSummary ? "rotate-180" : "rotate-0")}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.24 3.36a.75.75 0 01-.94 0L5.21 8.31a.75.75 0 01.02-1.1z" clipRule="evenodd" />
+    </svg>
+  </button>
+
+  {/* Contenido colapsable */}
+  <div
+    id="resumen-reserva"
+    className={clsx(
+      "grid gap-2 mt-3 transition-all",
+      showSummary ? "block" : "hidden"
+    )}
+  >
+    {/* Servicio */}
+    <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
+      <img
+        src={selectedMain?.imageUrl || "https://placehold.co/80x60?text=Svc"}
+        alt=""
+        className="object-cover w-16 h-12 border rounded-lg border-white/10"
+      />
+      <div className="min-w-0">
+        <div className="text-xs text-slate-300">Servicio</div>
+        <div className="text-sm font-semibold truncate">{selectedMain?.name || "—"}</div>
+      </div>
+    </div>
+
+    {/* Profesional */}
+    <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
+      {(() => {
+        const s = staffChoice === "random" ? null : staff.find((x) => x.id === staffChoice);
+        const img = s?.imageUrl || "https://placehold.co/80x60?text=Pro";
+        const name = staffChoice === "random" ? "Aleatorio" : (s?.name || "—");
+        return (
+          <>
+            <img
+              src={img}
+              alt=""
+              className="object-cover w-16 h-12 border rounded-lg border-white/10"
+            />
+            <div className="min-w-0">
+              <div className="text-xs text-slate-300">Profesional</div>
+              <div className="text-sm font-semibold truncate">{name}</div>
+            </div>
+          </>
+        );
+      })()}
+    </div>
+
+    {/* Extras */}
+    <div className="p-3 border rounded-xl border-white/10 bg-white/5">
+      <div className="mb-2 text-xs text-slate-300">Extras</div>
+      {extraIds?.length ? (
+        <div className="flex flex-wrap gap-2">
+          {extraIds.map((id) => {
+            const ex = extraCalendars.find((e) => e.id === id);
+            if (!ex) return null;
+            return (
+              <div key={id} className="flex items-center gap-2 px-2 py-1 border rounded-lg border-white/10 bg-white/5">
+                <img
+                  src={ex.imageUrl || "https://placehold.co/60x40?text=Ex"}
+                  alt=""
+                  className="object-cover w-12 border rounded-md h-9 border-white/10"
+                />
+                <span className="text-sm">{ex.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-sm">Ninguno</div>
+      )}
+    </div>
+
+    {/* Datos y totales */}
+    <div className="grid gap-2 sm:grid-cols-2">
+      <Stat label="Fecha" value={selectedDay ? selectedDay.toLocaleDateString() : "—"} />
+      <Stat label="Hora" value={selectedSlot || "—"} />
+      <Stat label="Duración total" value={`${totalDuration} min`} />
+      <Stat label="Total" value={`${totalPrice.toFixed(2)} €`} />
+    </div>
+  </div>
+</div>
+
     </section>
   );
 }
 
-/* Utilidades de presentación */
+/* Presentación */
 function Stat({ label, value }) {
   return (
     <div className="p-3 border rounded-xl border-white/10 bg-white/5">
@@ -659,7 +1016,6 @@ function Stat({ label, value }) {
     </div>
   );
 }
-
 function Field({ label, children }) {
   return (
     <label className="grid gap-1.5">
@@ -668,3 +1024,147 @@ function Field({ label, children }) {
     </label>
   );
 }
+
+/* ===================== Pantalla de confirmación ===================== */
+function ConfirmationScreen({ confirm, onClose }) {
+  const { name, dateText, timeText, mapsQuery } = confirm;
+  const niceName = name || "cliente";
+  const line1 = "Cita reservada con éxito";
+  const line2 = `Muchas gracias por confiar en nosotros ${niceName},`;
+  const line3 = `te esperamos el ${dateText} a las ${timeText}`;
+  const mapsSrc = `https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`;
+
+  const [showMap, setShowMap] = useState(false); // <-- mapa oculto hasta terminar typewriter
+
+  return (
+    <div className="min-h-[80vh] grid place-items-center">
+      <div className={clsx(glass, "w-[min(96vw,920px)] p-6 text-center text-zinc-100")}>
+        <SuccessTick className="mx-auto mb-4" />
+
+        {/* Texto con efecto typewriter; cuando termina, mostramos el mapa */}
+        <Typewriter lines={[line1, line2, line3]} onComplete={() => setShowMap(true)} />
+
+        {/* Mapa: aparece después con animación */}
+        <div
+          className={clsx(
+            "mt-6 transition-all duration-700 ease-out",
+            showMap ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+          )}
+        >
+          <div className="mb-2 text-xs text-slate-300">Ubicación</div>
+          <div className="overflow-hidden border rounded-xl border-white/10">
+            {showMap && (
+              <iframe
+                title="Ubicación"
+                src={mapsSrc}
+                className="w-full h-[300px]"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+              />
+            )}
+          </div>
+          <div className="mt-2 text-xs text-slate-300">
+            {mapsQuery}
+          </div>
+        </div>
+
+        <div className="flex justify-center mt-6">
+          <Button variant="primary" onClick={onClose}>Cerrar</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* ============ Animación Tick (SVG con stroke animation) ============ */
+function SuccessTick({ className }) {
+  return (
+    <div className={clsx("inline-block", className)}>
+      <svg
+        viewBox="0 0 52 52"
+        className="w-16 h-16"
+      >
+        <circle
+          cx="26"
+          cy="26"
+          r="25"
+          fill="none"
+          className="stroke-emerald-400/70"
+          strokeWidth="2"
+          style={{
+            strokeDasharray: 160,
+            strokeDashoffset: 160,
+            animation: "dash 0.6s ease-out forwards",
+          }}
+        />
+        <path
+          fill="none"
+          className="stroke-emerald-400"
+          strokeWidth="3"
+          d="M14 27 l8 8 l16 -18"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            strokeDasharray: 60,
+            strokeDashoffset: 60,
+            animation: "dash 0.5s 0.4s ease-out forwards",
+          }}
+        />
+      </svg>
+      <style>
+        {`@keyframes dash { to { stroke-dashoffset: 0; } }`}
+      </style>
+    </div>
+  );
+}
+
+/* ============ Typewriter (máquina de escribir línea a línea) ============ */
+function Typewriter({ lines = [], onComplete }) {
+  const [idx, setIdx] = useState(0);
+  const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (idx >= lines.length) {
+      // Terminado: dispara callback una sola vez
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+    const line = lines[idx];
+    let i = 0;
+    setText("");
+
+    const int = setInterval(() => {
+      i++;
+      setText(line.slice(0, i));
+      if (i >= line.length) {
+        clearInterval(int);
+        setTimeout(() => setIdx((n) => n + 1), 500); // pausa entre líneas
+      }
+    }, 20);
+
+    return () => clearInterval(int);
+  }, [idx, lines, onComplete]);
+
+  const rendered = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i < idx) {
+      rendered.push(
+        <p key={i} className={i === 0 ? "text-2xl sm:text-3xl font-bold" : "text-base sm:text-lg"}>
+          {lines[i]}
+        </p>
+      );
+    } else if (i === idx) {
+      rendered.push(
+        <p key={i} className={i === 0 ? "text-2xl sm:text-3xl font-bold" : "text-base sm:text-lg"}>
+          {text}
+          <span className="inline-block w-2 h-5 ml-1 align-baseline bg-emerald-400 animate-pulse" />
+        </p>
+      );
+      break;
+    }
+  }
+
+  return <div className="space-y-1">{rendered}</div>;
+}
+
