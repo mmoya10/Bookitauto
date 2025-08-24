@@ -6,12 +6,8 @@ import clsx from "clsx";
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import { fetchBusiness, fetchBranches } from "../../api/business";
-import {
-  fetchCategories,
-  fetchCalendars,
-  fetchStaff,
-  fetchBookingSites,
-} from "../../api/calendarManagement";
+import { fetchCalendars, fetchCategories, fetchStaff, fetchBookingSites, updateBookingSite, createCalendar, updateCalendar, deleteCalendars, setActiveBookingSite, deleteBookingSite } from "../../api/calendars";
+
 
 const glass =
   "rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
@@ -1030,8 +1026,7 @@ function ConfirmationScreen({ confirm, onClose }) {
   const { name, dateText, timeText, mapsQuery } = confirm;
   const niceName = name || "cliente";
   const line1 = "Cita reservada con éxito";
-  const line2 = `Muchas gracias por confiar en nosotros ${niceName},`;
-  const line3 = `te esperamos el ${dateText} a las ${timeText}`;
+  const line3 = `${dateText} a las ${timeText}`;
   const mapsSrc = `https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`;
 
   const [showMap, setShowMap] = useState(false); // <-- mapa oculto hasta terminar typewriter
@@ -1042,7 +1037,7 @@ function ConfirmationScreen({ confirm, onClose }) {
         <SuccessTick className="mx-auto mb-4" />
 
         {/* Texto con efecto typewriter; cuando termina, mostramos el mapa */}
-        <Typewriter lines={[line1, line2, line3]} onComplete={() => setShowMap(true)} />
+        <Typewriter lines={[line1, line3]} onComplete={() => setShowMap(true)} />
 
         {/* Mapa: aparece después con animación */}
         <div

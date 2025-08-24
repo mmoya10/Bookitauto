@@ -19,7 +19,7 @@ import {
   updateCalendar,
   deleteCalendars,
   setActiveBookingSite,
-} from "../../api/calendarManagement";
+} from "../../api/calendars";
 import { fetchBusiness, fetchBranches } from "../../api/business"; // AÑADIR
 
 

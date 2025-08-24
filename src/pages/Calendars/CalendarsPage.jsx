@@ -1,12 +1,17 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  fetchCalendars, fetchCalendarCategories, fetchBusinessHours, fetchHolidays,
-  fetchAppointments, fetchAbsences, fetchStaff,
-  createAppointment, updateAppointmentDates, updateAppointment
+  fetchBusinessHours, fetchHolidays,
+  fetchAppointments, fetchAbsences,
+  createAppointment, updateAppointment, updateAppointmentDates, deleteAppointment,
+  fetchCalendars, fetchCategories, fetchStaff, // ⬅️ NUEVO
 } from "../../api/calendars";
+
+import { fetchUsers, createUser } from "../../api/users";
+import { fetchProducts } from "../../api/products";
 import Button from "../../components/common/Button";
-import { Input, Select } from "../../components/common/Input";
+import { Input } from "../../components/common/Input";
+import Select from "../../components/common/Select";
 import Portal from "../../components/common/Portal";
 import { Link } from "react-router-dom";
 import clsx from "clsx";
@@ -17,6 +22,9 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import MultiSelect from "../../components/common/MultiSelect";
+
+// Mocks simples en el front (puedes cambiarlos cuando tengas API real)
+
 
 const glassCard =
   "rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.25)]";
@@ -41,23 +49,27 @@ const [estado, setEstado] = useState([]);              // ['asistida','no_asisti
   const qc = useQueryClient();
 
   // ====== datos ======
-  const { data: calendars } = useQuery({ queryKey: ["calendars"], queryFn: fetchCalendars });
-  const { data: categories } = useQuery({ queryKey: ["calendar-categories"], queryFn: fetchCalendarCategories });
-  const { data: staff } = useQuery({ queryKey: ["staff"], queryFn: fetchStaff });
+const { data: calendars } = useQuery({ queryKey: ["calendars"], queryFn: () => fetchCalendars() });
+const { data: categories } = useQuery({ queryKey: ["calendar-categories"], queryFn: () => fetchCategories() });
+const { data: staff } = useQuery({ queryKey: ["staff"], queryFn: () => fetchStaff() });
   const { data: businessHours } = useQuery({ queryKey: ["business-hours"], queryFn: fetchBusinessHours });
-  const { data: holidays } = useQuery({ queryKey: ["holidays"], queryFn: fetchHolidays });
-
+const { data: holidays } = useQuery({ queryKey: ["holidays"], queryFn: fetchHolidays });
+const { data: users }    = useQuery({ queryKey: ["users"],    queryFn: fetchUsers });
+const { data: products } = useQuery({ queryKey: ["products"], queryFn: fetchProducts });
   // arriba del return:
 const calMap = useMemo(
   () => Object.fromEntries((calendars ?? []).map(c => [c.id, c.name])),
   [calendars]
 );
-const staffMap = useMemo(
+const staffNameMap = useMemo(
   () => Object.fromEntries((staff ?? []).map(s => [s.id, s.name])),
   [staff]
 );
 
-
+const staffColorMap = useMemo(
+  () => Object.fromEntries((staff ?? []).map(s => [s.id, s.color || "#64748b"])),
+  [staff]
+);
 
   // marcar todo al inicio
   useEffect(() => {
@@ -73,18 +85,28 @@ const staffMap = useMemo(
   // rango visible
   const [range, setRange] = useState({ start: null, end: null });
 
-  const { data: citas } = useQuery({
-    queryKey: ["appointments", range, selectedCalendars, selectedStaff, tipo],
-    queryFn: () =>
-      fetchAppointments({
-        start: range.start?.toISOString(),
-        end: range.end?.toISOString(),
-        calendarIds: selectedCalendars,
-        staffIds: selectedStaff,
-        type: tipo === "ambos" ? "ambos" : "cita",
-      }),
-    enabled: !!range.start && !!range.end,
-  });
+ const { data: citas } = useQuery({
+  queryKey: ["appointments", range, selectedCalendars, selectedStaff, tipo, estado],
+  queryFn: () => {
+    // mapa: UI -> API
+    const statusMap = {
+      asistida: "completado",
+      no_asistida: "no_presentado",
+      pendiente: "pendiente",
+    };
+    const statusFilter = (estado ?? []).map(e => statusMap[e]).filter(Boolean);
+    return fetchAppointments({
+      start: range.start?.toISOString(),
+      end: range.end?.toISOString(),
+      calendarIds: selectedCalendars,
+      staffIds: selectedStaff,
+      type: tipo === "ambos" ? "ambos" : "cita",
+      status: statusFilter.length ? statusFilter : undefined, // ✅ aplica filtro
+    });
+  },
+  enabled: !!range.start && !!range.end,
+});
+
 
   const { data: ausencias } = useQuery({
     queryKey: ["absences", range, selectedStaff, tipo],
@@ -101,38 +123,63 @@ const staffMap = useMemo(
 
   // ======= Eventos (citas + ausencias + festivos) con nombres =======
 const events = useMemo(() => {
-  // Filtrado por estado (si hay estados seleccionados)
+  const apts = (citas ?? []).map((e) => {
+    const calName   = calMap?.[e.calendarId] || "Cita";
+const client    = e.user
+  ? `${(e.user.firstName || e.user.name || "")} ${(e.user.lastName || e.user.surname || "")}`.trim()
+  : "";    const staffName = staffNameMap?.[e.staffId] || "";
+    const staffCol  = staffColorMap?.[e.staffId] || "#64748b";
 
+    // Título: Calendario – Cliente
+    const title = `${calName}${client ? " – " + client : ""}`;
 
-  // Citas con colores + nombres de calendario/personal en extendedProps
-  const apts = (citas ?? []).map((e) => ({
-    ...e,
-    backgroundColor: e.paid ? "rgba(16,185,129,0.35)" : "rgba(124,58,237,0.35)",
-    borderColor:     e.paid ? "rgba(16,185,129,0.6)"  : "rgba(124,58,237,0.6)",
-    textColor: "#fff",
-    extendedProps: {
+    // Colores por estado:
+    // asistida -> e.status === "completado"
+    // no asistida -> e.status === "no_presentado"
+    let bg, bd;
+    if (e.status === "completado") {
+      bg = "rgba(16,185,129,0.28)"; // verde suave fijo
+      bd = "rgba(16,185,129,0.85)";
+    } else if (e.status === "no_presentado") {
+      bg = "rgba(244,63,94,0.28)";  // rojo suave fijo
+      bd = "rgba(244,63,94,0.85)";
+    } else {
+      // pendientes: color por staff
+      bg = hexToRgba(staffCol, 0.28);
+      bd = hexToRgba(staffCol, 0.85);
+    }
+
+    return {
       ...e,
-      calendarName: calMap?.[e.calendarId],
-      staffName:    staffMap?.[e.staffId],
-    },
-  }));
+      title,
+      backgroundColor: bg,
+      borderColor: bd,
+      textColor: "#fff",
+      extendedProps: {
+        ...e,
+        calendarName: calName,
+        staffName,
+        staffColor: staffCol,
+        paymentKind: e.payment === "online" ? "online" : (e.tiendapago ? `tienda: ${e.tiendapago}` : "tienda"),
+      },
+    };
+  });
 
-  // Ausencias con estilo y un nombre por si se usa en el render
   const abs = (ausencias ?? []).map((e) => ({
     ...e,
+    title: `Ausencia · ${staffNameMap?.[e.staffId] || ""}`,
     backgroundColor: "rgba(239,68,68,0.25)",
     borderColor: "rgba(239,68,68,0.6)",
     textColor: "#fff",
     extendedProps: {
       ...e,
       calendarName: "Ausencia",
-      staffName:    staffMap?.[e.staffId],
+      staffName: staffNameMap?.[e.staffId],
     },
   }));
 
-  // Festivos: los mantienes tal cual (ya suelen venir con display:'background')
   return [...apts, ...abs, ...(holidays ?? [])];
-});
+}, [citas, ausencias, holidays, calMap, staffNameMap, staffColorMap]);
 
 
   // huecos libres (solo día/semana)
@@ -156,6 +203,7 @@ const events = useMemo(() => {
 
   // crear/editar cita
   const [modal, setModal] = useState({ open: false, start: null, end: null, event: null });
+  const [completePanel, setCompletePanel] = useState({ open: false, event: null });
   const createApt = useMutation({
     mutationFn: createAppointment,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["appointments"] }); setModal({ open:false, start:null, end:null, event:null }); },
@@ -313,27 +361,37 @@ const events = useMemo(() => {
           }}
           editable                                       // ✅ drag & drop / resize
           eventDrop={async (info) => {
-            const ok = await moveApt.mutateAsync({
-              id: info.event.id,
-              start: info.event.start.toISOString(),
-              end: info.event.end.toISOString(),
-            }).catch(()=>false);
-            if (!ok) info.revert();
-          }}
-          eventResize={async (info) => {
-            const ok = await moveApt.mutateAsync({
-              id: info.event.id,
-              start: info.event.start.toISOString(),
-              end: info.event.end.toISOString(),
-            }).catch(()=>false);
-            if (!ok) info.revert();
-          }}
+  const okUser = window.confirm("¿Confirmar mover esta cita a la nueva franja?");
+  if (!okUser) { info.revert(); return; }
+
+  const ok = await moveApt.mutateAsync({
+    id: info.event.id,
+    start: info.event.start.toISOString(),
+    end: info.event.end.toISOString(),
+  }).catch(()=>false);
+
+  if (!ok) info.revert();
+}}
+
+         eventResize={async (info) => {
+  const okUser = window.confirm("¿Confirmar cambiar la duración de esta cita?");
+  if (!okUser) { info.revert(); return; }
+
+  const ok = await moveApt.mutateAsync({
+    id: info.event.id,
+    start: info.event.start.toISOString(),
+    end: info.event.end.toISOString(),
+  }).catch(()=>false);
+
+  if (!ok) info.revert();
+}}
+
           eventClick={(arg) => {
-            const isFree = arg.event.extendedProps?.isFreeSlot;
-            if (isFree) { openAdd(arg.event.start, arg.event.end); return; }
-            // solo editar citas; las ausencias las ignoramos aquí
-            if (arg.event.extendedProps?.type === "cita") openEdit(arg.event);
-          }}
+  const isFree = arg.event.extendedProps?.isFreeSlot;
+  if (isFree) { openAdd(arg.event.start, arg.event.end); return; }
+  if (arg.event.extendedProps?.type === "cita") openEdit(arg.event);
+}}
+
           businessHours={businessHours ?? []}
           weekends
           events={allEvents}
@@ -356,36 +414,108 @@ const events = useMemo(() => {
 
       {/* ======= Modal Crear/Editar ======= */}
       {modal.open && (
-        <Portal>
-          <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
-            <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold">{modal.event ? "Editar cita" : "Nueva cita"}</h3>
-                <Button variant="ghost" size="sm" onClick={() => setModal({ open:false, start:null, end:null, event:null })}>
-                  Cerrar
-                </Button>
-              </div>
-              <AppointmentForm
-                mode={modal.event ? "edit" : "create"}
-                event={modal.event}
-                calendars={calendars ?? []}
-                staff={staff ?? []}
-                initialStart={modal.start}
-                initialEnd={modal.end}
-                onSubmit={async (payload) => {
-                  if (modal.event) {
-                    await updateApt.mutateAsync(payload);
-                    setModal({ open:false, start:null, end:null, event:null });
-                  } else {
-                    await createApt.mutateAsync(payload);
-                  }
-                }}
-                submitting={createApt.isPending || updateApt.isPending}
-              />
-            </div>
-          </div>
-        </Portal>
-      )}
+  <Portal>
+    <div className="fixed inset-0 z-[1100] grid place-items-center bg-black/40 p-4">
+      <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold text-white/90">
+            {modal.event ? "Editar cita" : "Nueva cita"}
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setModal({ open:false, start:null, end:null, event:null })}
+          >
+            Cerrar
+          </Button>
+        </div>
+
+        <AppointmentForm
+  mode={modal.event ? "edit" : "create"}
+  event={modal.event}
+  calendars={calendars ?? []}
+  staff={staff ?? []}
+  businessHours={businessHours ?? []}
+  users={users ?? []}
+  initialStart={modal.start}
+  initialEnd={modal.end}
+  onOpenComplete={() => setCompletePanel({ open:true, event: modal.event })}
+  onSubmit={async (payload) => {
+    if (modal.event) {
+      await updateApt.mutateAsync(payload);
+      setModal({ open:false, start:null, end:null, event:null });
+    } else {
+      await createApt.mutateAsync(payload);
+      setModal({ open:false, start:null, end:null, event:null });
+    }
+  }}
+  submitting={createApt.isPending || updateApt.isPending}
+/>
+
+      </div>
+    </div>
+  </Portal>
+)}
+
+      {/* ======= Panel Completar ======= */}
+{completePanel.open && completePanel.event && (
+  <Portal>
+    <div className="fixed inset-0 z-[1200] grid place-items-center bg-black/40 p-4">
+      <div className={`${glassCard} w-[min(96vw,560px)] p-5`}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold">Completar cita</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setCompletePanel({ open:false, event:null })}
+          >
+            Cerrar
+          </Button>
+        </div>
+
+        <CompleteForm
+          event={completePanel.event}
+          products={products ?? []}
+          onCancel={() => setCompletePanel({ open:false, event:null })}
+          onSubmit={async ({ status, productsBought, totalCobrado, tiendapago, productTotal, productNames }) => {
+            const prevTotal = Number(completePanel.event.extendedProps?.totalPrice ?? 0);
+            const payment   = completePanel.event.extendedProps?.payment ?? "tienda";
+
+            if (status === "no_presentado") {
+              await updateApt.mutateAsync({ id: completePanel.event.id, status: "no_presentado" });
+              setCompletePanel({ open:false, event:null });
+              setModal({ open:false, start:null, end:null, event:null });
+              return;
+            }
+
+            const minDue = +(prevTotal + productTotal).toFixed(2);
+            if (totalCobrado < minDue) {
+              alert(`Total no puede ser menor que ${minDue.toFixed(2)}€ (cita + productos).`);
+              return;
+            }
+            const propina = +(totalCobrado - minDue).toFixed(2);
+
+            const patch = { id: completePanel.event.id, status: "completado", propina };
+            if (payment === "tienda") {
+              if (!tiendapago) { alert("Selecciona método de pago (efectivo/tarjeta)."); return; }
+              patch.tiendapago = tiendapago;
+            }
+            const prevNotes = completePanel.event.extendedProps?.notes || "";
+            const noteProd  = productsBought?.length ? `\nProductos: ${productNames} (=${productTotal.toFixed(2)}€)` : "";
+            patch.notes = (prevNotes + noteProd).trim();
+            patch.products = productsBought; // si tu API quiere guardar los IDs
+
+            await updateApt.mutateAsync(patch);
+            setCompletePanel({ open:false, event:null });
+            setModal({ open:false, start:null, end:null, event:null });
+          }}
+        />
+      </div>
+    </div>
+  </Portal>
+)}
+
+
     </div>
   );
 }
@@ -402,92 +532,454 @@ function FilterGroup({ title, children }) {
 
 
 /* ====== Form cita ====== */
-function AppointmentForm({ mode, event, calendars, staff, initialStart, initialEnd, onSubmit, submitting }) {
+function AppointmentForm({
+  mode, event, calendars, staff, initialStart, initialEnd,
+  businessHours = [],
+  users = [],
+  onSubmit, onOpenComplete, submitting
+}) {
+
   const isEdit = mode === "edit";
-  const [title, setTitle] = useState(event?.title || "");
+
+  // ===== Usuario =====
+const qc = useQueryClient();
+const [userId, setUserId] = useState(event?.extendedProps?.user?.id || (users[0]?.id ?? ""));
+const [creatingUser, setCreatingUser] = useState(false);
+const [nu, setNu] = useState({ firstName:"", lastName:"", email:"", phone:"" });
+
+const createUserMut = useMutation({
+  mutationFn: createUser,
+  onSuccess: async (newUser) => {
+    await qc.invalidateQueries({ queryKey: ["users"] });
+    setUserId(newUser?.id);
+    setCreatingUser(false);
+  }
+});
+
+
+  // ===== Calendario / Extras =====
   const [calendarId, setCalendarId] = useState(event?.extendedProps?.calendarId || calendars[0]?.id || "");
+  const selectedCal = useMemo(() => calendars.find(c => c.id === calendarId), [calendars, calendarId]);
+  const [extraIds, setExtraIds] = useState(event?.extendedProps?.extraIds || []);
+  const extrasOpts = useMemo(() => {
+    const ids = selectedCal?.extrasSupported || [];
+    return calendars.filter(c => ids.includes(c.id)).map(e => ({ id:e.id, label:e.name, duration:e.duration, price:e.price }));
+  }, [selectedCal, calendars]);
+
+  // ===== Personal =====
   const [staffId, setStaffId] = useState(event?.extendedProps?.staffId || staff[0]?.id || "");
-  const [start, setStart] = useState(toLocalInput(event?.start || initialStart) || "");
-  const [end, setEnd] = useState(toLocalInput(event?.end || initialEnd) || "");
-  const [paid, setPaid] = useState(!!event?.extendedProps?.paid);
+
+  // ===== Fechas / Huecos por duración =====
+  // ===== Fechas / Slots =====
+const baseStart = event?.start || initialStart || new Date();
+const baseEnd   = event?.end   || initialEnd   || new Date(baseStart.getTime() + 45*60000);
+
+const [dateOnly, setDateOnly] = useState(toLocalDate(baseStart));
+const [start, setStart] = useState(toLocalInput(baseStart)); // se setea desde slot
+const [end, setEnd]     = useState(toLocalInput(baseEnd));   // se setea desde slot
+
+const totalDuration = useMemo(() => {
+  const main = Number(selectedCal?.duration || 30);
+  const exDur = extrasOpts
+    .filter(x => extraIds.includes(x.id))
+    .reduce((a,x)=>a+Number(x.duration||0), 0);
+  return main + exDur; // minutos
+}, [selectedCal, extrasOpts, extraIds]);
+
+const [slots, setSlots] = useState([]);
+const [selectedSlotIdx, setSelectedSlotIdx] = useState(-1);
+
+useEffect(() => {
+  let cancel = false;
+  async function load() {
+    if (!dateOnly || !staffId || !totalDuration || !businessHours?.length) {
+      setSlots([]); setSelectedSlotIdx(-1);
+      return;
+    }
+    const dayStart = new Date(dateOnly + "T00:00:00");
+    const dayEnd   = new Date(dateOnly + "T23:59:59");
+
+    // eventos ocupados del staff ese día
+    const res = await fetchAppointments({
+      start: dayStart.toISOString(),
+      end: dayEnd.toISOString(),
+      staffIds: [staffId],
+      type: "ambos"
+    });
+
+    const busy = res.map(e => ({ start: new Date(e.start), end: new Date(e.end) }));
+    const gaps = computeFreeSlotsForStaff(businessHours, busy, dayStart, dayEnd);
+
+    // trocear gaps en slots de 15m donde quepa totalDuration
+    const out = [];
+    for (const g of gaps) {
+      for (let t = new Date(g.start); t <= new Date(g.end.getTime() - totalDuration*60000); t = addMinutes(t, 15)) {
+        const s = t;
+        const e = new Date(t.getTime() + totalDuration*60000);
+        if (e <= g.end) out.push({ start: s, end: e });
+      }
+    }
+
+    if (cancel) return;
+    setSlots(out);
+
+    // si estamos editando, intenta preseleccionar el slot correspondiente
+    if (event?.start && event?.end) {
+      const msStart = new Date(event.start).getTime();
+      const idx = out.findIndex(x => x.start.getTime() === msStart);
+      setSelectedSlotIdx(idx >= 0 ? idx : -1);
+    } else {
+      setSelectedSlotIdx(-1);
+    }
+  }
+  load();
+  return () => { cancel = true; };
+}, [dateOnly, staffId, totalDuration, businessHours, event?.start, event?.end]);
+
+
+  // ===== Precio total y pago en tienda por defecto =====
+  const totalPrice = useMemo(() => {
+    const main = Number(selectedCal?.price || 0);
+    const ex   = extrasOpts.filter(x => extraIds.includes(x.id)).reduce((a,x)=>a+Number(x.price||0), 0);
+    return +(main + ex).toFixed(2);
+  }, [selectedCal, extrasOpts, extraIds]);
+
+  const [payment] = useState("tienda"); // fijamos tienda por defecto
+  const [tiendapago, setTiendapago] = useState(event?.extendedProps?.tiendapago || "efectivo");
+  const [notes, setNotes] = useState(event?.extendedProps?.notes || "");
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!title || !calendarId || !staffId || !start || !end) return;
-        const payload = {
-          id: event?.id,
-          title,
-          calendarId,
-          staffId,
-          start: new Date(start).toISOString(),
-          end: new Date(end).toISOString(),
-          paid,
-          type: "cita",
-        };
+
+        const selUser = (users ?? []).find(u => u.id === userId) || null;
+
+const payload = {
+  id: event?.id,
+  calendarId,
+  staffId,
+  extraIds,
+  start: new Date(start).toISOString(),
+  end:   new Date(end).toISOString(),
+  type: "cita",
+  user: selUser ? {
+    id: selUser.id,
+    firstName: selUser.firstName || selUser.name,
+    lastName:  selUser.lastName  || selUser.surname,
+    email: selUser.email,
+    phone: selUser.phone
+  } : null,
+  totalPrice,
+  payment,
+  tiendapago,
+  propina: Number(event?.extendedProps?.propina ?? 0),
+  notes,
+};
         onSubmit(payload);
       }}
       className="grid gap-3"
     >
+      {/* Usuario */}
       <div className="grid gap-1.5">
-        <span className="text-xs text-slate-300">Título</span>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Corte - Nombre cliente" />
-      </div>
+  <span className="text-xs text-slate-300">Usuario</span>
+  {!creatingUser ? (
+    <div className="flex gap-2">
+      <Select
+  value={userId}
+  onChange={(val)=>setUserId(val)}
+  options={(users ?? []).map(u => ({
+    value: u.id,
+    label: `${u.firstName || u.name} ${u.lastName || u.surname} · ${u.phone || ""}`.trim()
+  }))}
+  searchable={true}
+  searchPlaceholder="Buscar cliente…"
+  className="flex-1"
+/>
 
+
+      <Button type="button" onClick={()=>setCreatingUser(true)}>Nuevo</Button>
+    </div>
+  ) : (
+    <div className="grid gap-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Input placeholder="Nombre"    value={nu.firstName} onChange={e=>setNu({...nu, firstName:e.target.value})}/>
+        <Input placeholder="Apellidos" value={nu.lastName}  onChange={e=>setNu({...nu, lastName:e.target.value})}/>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Input placeholder="Email"     value={nu.email}     onChange={e=>setNu({...nu, email:e.target.value})}/>
+        <Input placeholder="Teléfono"  value={nu.phone}     onChange={e=>setNu({...nu, phone:e.target.value})}/>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          onClick={async ()=>{
+            const created = await createUserMut.mutateAsync(nu).catch(()=>null);
+            if (!created) alert("No se pudo crear el usuario.");
+          }}
+        >
+          Crear
+        </Button>
+        <Button variant="ghost" type="button" onClick={()=>setCreatingUser(false)}>Cancelar</Button>
+      </div>
+    </div>
+  )}
+</div>
+
+
+      {/* Calendario / Personal */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <span className="text-xs text-slate-300">Calendario</span>
-          <Select value={calendarId} onChange={(e) => setCalendarId(e.target.value)}>
-            {calendars.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </Select>
+          <Select
+  options={(calendars ?? []).map(c => ({ value: c.id, label: c.name }))}
+  value={calendarId}
+  onChange={(val)=>{ setCalendarId(val); setExtraIds([]); }}
+  searchable={true}
+  searchPlaceholder="Buscar calendario"
+  className="flex-1"
+/>
+
         </div>
         <div className="grid gap-1.5">
           <span className="text-xs text-slate-300">Personal</span>
-          <Select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-            {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </Select>
+          <Select
+  options={(staff ?? []).map(s => ({ value: s.id, label: s.name }))}
+  value={staffId}
+  onChange={(val)=>setStaffId(val)}
+  searchable={true}
+  searchPlaceholder="Buscar personal"
+  className="flex-1"
+/>
+
         </div>
       </div>
 
+      {/* Extras */}
+      <div className="grid gap-1.5">
+        <span className="text-xs text-slate-300">Extras</span>
+        <MultiSelect
+          items={extrasOpts.map(x => ({ id:x.id, label:`${x.label || x.name || x.id}` }))}
+          values={extraIds}
+          onChange={setExtraIds}
+          placeholder={extrasOpts.length ? "Selecciona extras" : "No hay extras"}
+          disabled={!extrasOpts.length}
+          showSelectAll
+          selectAllLabel="Todos"
+        />
+        <div className="text-[11px] text-slate-400">
+          Duración total: {totalDuration} min
+        </div>
+      </div>
+
+      {/* Fecha / Huecos */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  <div className="grid gap-1.5">
+    <span className="text-xs text-slate-300">Fecha</span>
+    <Input
+      type="date"
+      value={dateOnly}
+      onChange={(e)=> setDateOnly(e.target.value)}
+    />
+  </div>
+
+  <div className="grid gap-1.5">
+    <span className="text-xs text-slate-300">Hora</span>
+    <Select
+  options={
+    slots.length
+      ? [{ value: "-1", label: "Selecciona un hueco…" }]
+          .concat(slots.map((s, i) => ({ value: String(i), label: formatSlotLabel(s.start, s.end) })))
+      : [{ value: "-1", label: "Sin huecos" }]
+  }
+  value={String(selectedSlotIdx)}
+  onChange={(val)=>{
+    const i = Number(val);
+    setSelectedSlotIdx(i);
+    const s = slots[i];
+    if (s) {
+      setStart(toLocalInput(s.start));
+      setEnd(toLocalInput(s.end));
+    }
+  }}
+  disabled={!slots.length}
+/>
+
+  </div>
+</div>
+
+
+      {/* Precio y pago */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="grid gap-1.5">
-          <span className="text-xs text-slate-300">Inicio</span>
-          <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
+          <span className="text-xs text-slate-300">Precio total</span>
+          <Input value={totalPrice} readOnly />
         </div>
         <div className="grid gap-1.5">
-          <span className="text-xs text-slate-300">Fin</span>
-          <Input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <span className="text-xs text-slate-300">Pago</span>
+          <Input value="tienda" readOnly />
+        </div>
+        <div className="grid gap-1.5">
+          <span className="text-xs text-slate-300">Método tienda</span>
+          <Select
+  options={[
+    { value: "efectivo", label: "Efectivo" },
+    { value: "tarjeta",  label: "Tarjeta"  },
+  ]}
+  value={tiendapago}
+  onChange={(val)=>setTiendapago(val)}
+/>
+
         </div>
       </div>
 
-      <label className="inline-flex items-center gap-2 mt-1 text-sm text-slate-200">
-        <input type="checkbox" className="rounded size-4 border-white/20 bg-white/10" checked={paid} onChange={(e)=>setPaid(e.target.checked)} />
-        Pagado
-      </label>
+      {/* Notas */}
+      <div className="grid gap-1.5">
+        <span className="text-xs text-slate-300">Notas</span>
+        <Input as="textarea" value={notes} onChange={(e)=>setNotes(e.target.value)} placeholder="Observaciones…" />
+      </div>
 
       <div className="flex items-center gap-2 mt-1">
         <Button variant="primary" disabled={submitting} type="submit">
           {submitting ? "Guardando…" : isEdit ? "Guardar cambios" : "Aceptar"}
         </Button>
+        {isEdit && (
+          <Button type="button" onClick={onOpenComplete}>Completar cita</Button>
+        )}
       </div>
     </form>
   );
 }
+
+function CompleteForm({ event, products = [], onCancel, onSubmit }) {
+  const [status, setStatus] = useState("completado"); // "no_presentado" | "completado"
+  const prevTotal = Number(event.extendedProps?.totalPrice ?? 0);
+  const payment   = event.extendedProps?.payment ?? "tienda";
+
+  const [productsBought, setProductsBought] = useState([]); // array de IDs
+  const [totalCobrado, setTotalCobrado] = useState(prevTotal);
+  const [tiendapago, setTiendapago] = useState(event.extendedProps?.tiendapago || "efectivo");
+
+  const canPaymentChoice = payment === "tienda";
+
+  const priceOf = (p) => Number(p?.salePrice ?? p?.price ?? 0);
+  const productTotal = (productsBought ?? [])
+    .map(id => (products || []).find(p => p.id === id))
+    .filter(Boolean)
+    .reduce((acc,p)=> acc + priceOf(p), 0);
+
+  const minDue = +(prevTotal + productTotal).toFixed(2);
+
+  useEffect(() => {
+    setTotalCobrado((t) => (Number(t) < minDue ? minDue : Number(t)));
+  }, [minDue]);
+
+  return (
+    <form
+      className="grid gap-3"
+      onSubmit={(e)=>{ 
+        e.preventDefault();
+        const productNames = (productsBought ?? [])
+          .map(id => (products || []).find(p => p.id === id)?.name)
+          .filter(Boolean)
+          .join(", ");
+        onSubmit({
+          status,
+          productsBought,
+          productNames,
+          productTotal,
+          totalCobrado: Number(totalCobrado),
+          tiendapago
+        });
+      }}
+    >
+      <div className="grid gap-1.5">
+        <span className="text-xs text-slate-300">Estado</span>
+        <div className="flex gap-3">
+          <label className="inline-flex items-center gap-2">
+            <input type="radio" name="st" checked={status==="no_presentado"} onChange={()=>setStatus("no_presentado")} />
+            No presentado
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input type="radio" name="st" checked={status==="completado"} onChange={()=>setStatus("completado")} />
+            Completado
+          </label>
+        </div>
+      </div>
+
+      {status === "completado" && (
+        <>
+          <div className="grid gap-1.5">
+            <span className="text-xs text-slate-300">Productos</span>
+            <MultiSelect
+              items={(products ?? []).map(p => ({
+                id: p.id,
+                label: `${p.name} (${(p.salePrice ?? p.price).toFixed(2)}€)`
+              }))}
+              values={productsBought}
+              onChange={setProductsBought}
+              placeholder="Selecciona productos vendidos"
+              showSelectAll
+              selectAllLabel="Todos"
+            />
+            <div className="text-[11px] text-slate-400">
+              Importe productos: {productTotal.toFixed(2)} €
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <span className="text-xs text-slate-300">Total a cobrar (€)</span>
+              <Input
+                type="number"
+                step="0.01"
+                min={minDue}
+                value={totalCobrado}
+                onChange={(e)=>setTotalCobrado(e.target.value)}
+              />
+              <div className="text-[11px] text-slate-400">
+                Cita: {prevTotal.toFixed(2)} € · Productos: {productTotal.toFixed(2)} € ·
+                Mín.: {minDue.toFixed(2)} € · Propina: {Math.max(0, Number(totalCobrado) - minDue).toFixed(2)} €
+              </div>
+            </div>
+
+            {canPaymentChoice && (
+              <div className="grid gap-1.5">
+                <span className="text-xs text-slate-300">Método de pago</span>
+                <Select
+  options={[
+    { value: "efectivo", label: "Efectivo" },
+    { value: "tarjeta",  label: "Tarjeta"  },
+  ]}
+  value={tiendapago}
+  onChange={(val)=>setTiendapago(val)}
+/>
+
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <div className="flex gap-2">
+        <Button type="submit">Aceptar</Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </form>
+  );
+}
+
 
 /* ====== Render de evento con badge Pago ====== */
 function renderEventContent(arg) {
   const { event } = arg;
   const isFree = event.extendedProps?.isFreeSlot;
   const isAbs  = event.extendedProps?.type === "ausencia";
-  const paid   = !!event.extendedProps?.paid;
 
-  const calName   = event.extendedProps?.calendarName || "Cita";
   const staffName = event.extendedProps?.staffName || "";
+  const payKind   = event.extendedProps?.paymentKind || "";
 
-  // Intento simple de extraer el "cliente" de "Corte - Juan"
   const rawTitle = event.title || "";
-  const client = rawTitle.includes(" - ") ? rawTitle.split(" - ")[1] : rawTitle;
 
   const wrap = document.createElement("div");
   wrap.style.display = "grid";
@@ -495,6 +987,7 @@ function renderEventContent(arg) {
   wrap.style.padding = "2px 4px";
   wrap.style.fontSize = "12px";
 
+  // ===== Título =====
   const title = document.createElement("div");
   title.style.fontWeight = "600";
   title.style.lineHeight = "1.1";
@@ -504,24 +997,28 @@ function renderEventContent(arg) {
   } else if (isFree) {
     title.textContent = "Hueco";
   } else {
-    // 👉 Calendario – Cliente · Personal
-    const left  = calName;
-    const mid   = client ? ` – ${client}` : "";
-    const right = staffName ? ` · ${staffName}` : "";
-    title.textContent = `${left}${mid}${right}`;
+    // Ejemplo: Corte Premium – Juan
+    title.textContent = rawTitle;
   }
-
   wrap.appendChild(title);
 
-  if (!isAbs && !isFree) {
+  // ===== Badge de método de pago =====
+  if (!isAbs && !isFree && payKind) {
     const badge = document.createElement("div");
-    badge.textContent = paid ? "Pagado" : "Pendiente";
+    badge.textContent = payKind === "online" ? "Online" : payKind; // "tienda: efectivo/tarjeta"
     badge.style.fontSize = "10px";
     badge.style.padding = "1px 6px";
     badge.style.borderRadius = "9999px";
     badge.style.width = "fit-content";
-    badge.style.background = paid ? "rgba(16,185,129,0.25)" : "rgba(251,191,36,0.25)";
-    badge.style.color = paid ? "#d1fae5" : "#fef3c7";
+
+    if (payKind === "online") {
+      badge.style.background = "rgba(16,185,129,0.25)"; // verde suave
+      badge.style.color = "#d1fae5";
+    } else {
+      badge.style.background = "rgba(124,58,237,0.25)"; // morado suave
+      badge.style.color = "#ede9fe";
+    }
+
     wrap.appendChild(badge);
   }
 
@@ -529,19 +1026,44 @@ function renderEventContent(arg) {
 }
 
 
+function hexToRgba(hex, alpha = 1) {
+  if (!hex) return `rgba(100,116,139,${alpha})`; // fallback slate-500
+  const h = hex.replace("#", "");
+  const bigint = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+
 /* ================== Helpers ================== */
+function formatSlotLabel(start, end) {
+  const s = toLocalTime(start);
+  const e = toLocalTime(end);
+  return `${s}-${e}`;
+}
 function toLocalInput(d) {
   if (!d) return "";
   const dt = new Date(d);
   dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
   return dt.toISOString().slice(0, 16);
 }
+function toLocalDate(d) {
+  if (!d) return "";
+  const dt = new Date(d);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString().slice(0, 10);
+}
+function toLocalTime(d) {
+  const dt = new Date(d);
+  dt.setMinutes(dt.getMinutes() - dt.getTimezoneOffset());
+  return dt.toISOString().slice(11,16);
+}
 
-function computeFreeSlots(businessHours, busyEvents, rangeStart, rangeEnd) {
-  const days = [];
-  for (let d = new Date(rangeStart); d < rangeEnd; d = addMinutes(d, 1440)) {
-    days.push(new Date(d));
-  }
+// Igual que computeFreeSlots, pero no recorre todos los días; solo 1 día y para businessHours pasados
+function computeFreeSlotsForStaff(businessHours, busyEvents, rangeStart, rangeEnd) {
+  const days = [new Date(rangeStart)];
   const busy = busyEvents.map((e) => ({ start: new Date(e.start), end: new Date(e.end) }));
   const slots = [];
   for (const day of days) {
@@ -555,8 +1077,9 @@ function computeFreeSlots(businessHours, busyEvents, rangeStart, rangeEnd) {
         const e = new Date(day);
         const [eh, em] = bh.endTime.split(":").map(Number);
         e.setHours(eh, em || 0, 0, 0);
-        const segStart = maxDate(s, rangeStart);
-        const segEnd = minDate(e, rangeEnd);
+        const segStart = maxDate([s, rangeStart]);
+const segEnd   = minDate([e, rangeEnd]);
+
         if (isBefore(segStart, segEnd)) segments.push({ start: segStart, end: segEnd });
       }
     }
@@ -569,12 +1092,52 @@ function computeFreeSlots(businessHours, busyEvents, rangeStart, rangeEnd) {
   }
   return slots;
 }
+
+
+// Resta un bloque [start,end) a una lista de intervalos
 function subtractIntervalList(intervals, block) {
   const out = [];
   for (const it of intervals) {
+    // no solapa
     if (block.end <= it.start || block.start >= it.end) { out.push(it); continue; }
+    // hay solape: puede partir el intervalo en 2
     if (block.start > it.start) out.push({ start: it.start, end: new Date(Math.min(block.start, it.end)) });
     if (block.end   < it.end)   out.push({ start: new Date(Math.max(block.end, it.start)), end: it.end });
   }
   return out.filter(x => x.end > x.start);
 }
+
+// Calcula huecos libres dentro de businessHours restando eventos ocupados (busyEvents)
+function computeFreeSlots(businessHours, busyEvents, rangeStart, rangeEnd) {
+  const days = [];
+  for (let d = new Date(rangeStart); d < rangeEnd; d = addMinutes(d, 1440)) {
+    days.push(new Date(d));
+  }
+  const busy = busyEvents.map((e) => ({ start: new Date(e.start), end: new Date(e.end) }));
+  const slots = [];
+  for (const day of days) {
+    const dow = day.getDay();
+    const segments = [];
+    for (const bh of businessHours || []) {
+      if ((bh.daysOfWeek || []).includes(dow)) {
+        const s = new Date(day);
+        const [sh, sm] = (bh.startTime || "00:00").split(":").map(Number);
+        s.setHours(sh, sm || 0, 0, 0);
+        const e = new Date(day);
+        const [eh, em] = (bh.endTime || "23:59").split(":").map(Number);
+        e.setHours(eh, em || 0, 0, 0);
+        const segStart = maxDate([s, rangeStart]);  // ✅
+        const segEnd   = minDate([e, rangeEnd]);    // ✅
+        if (isBefore(segStart, segEnd)) segments.push({ start: segStart, end: segEnd });
+      }
+    }
+    let gaps = segments.slice();
+    for (const b of busy) {
+      gaps = subtractIntervalList(gaps, b);
+      if (!gaps.length) break;
+    }
+    slots.push(...gaps);
+  }
+  return slots;
+}
+

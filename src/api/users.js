@@ -134,3 +134,21 @@ export async function fetchUsers() {
       `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'es', { sensitivity: 'base' })
     );
 }
+
+
+export async function createUser(payload) {
+  await sleep(140);
+  const id = `u-${Math.random().toString(36).slice(2,8)}`;
+  const u = {
+    id,
+    firstName: (payload.firstName ?? "").trim() || "SinNombre",
+    lastName:  (payload.lastName  ?? "").trim(),
+    email:     (payload.email     ?? "").trim(),
+    phone:     (payload.phone     ?? "").trim(),
+    imageUrl:  payload.imageUrl?.trim() || null,
+    lastAppointment: null,
+    signup: new Date().toISOString(),
+  };
+  users.push(u);
+  return u; // devolvemos el usuario creado
+}
