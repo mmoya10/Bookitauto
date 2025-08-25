@@ -328,8 +328,14 @@ if (!business || !mainForm ) {
     </div>
   </div>
 </section>
-
-
+  <ScheduleManager
+    title="Horario del negocio"
+    description="Configura el horario semanal y añade días especiales (festivos, horario reducido o cerrado)."
+    queryKey={["business-schedule"]}
+    fetchSchedule={fetchBusinessSchedule}
+    saveSchedule={updateBusinessSchedule}
+  />
+  
       {/* Toggle modo sucursal */}
       <div className={clsx(glass, "p-4")}>
         <Toggle
@@ -395,17 +401,6 @@ if (!business || !mainForm ) {
     )}
   </section>
 )}
-
-
-     
-
-  <ScheduleManager
-    title="Horario del negocio"
-    description="Configura el horario semanal y añade días especiales (festivos, horario reducido o cerrado)."
-    queryKey={["business-schedule"]}
-    fetchSchedule={fetchBusinessSchedule}
-    saveSchedule={updateBusinessSchedule}
-  />
 
       {/* Modales */}
       {modal.open && (

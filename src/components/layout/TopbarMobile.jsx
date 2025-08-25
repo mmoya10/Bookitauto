@@ -30,7 +30,6 @@ export default function TopbarMobile({
 
         <button
           type="button"
-          onClick={() => navigate("/negocio")}
           className="flex items-center gap-2"
           title="Ir a Negocio"
         >

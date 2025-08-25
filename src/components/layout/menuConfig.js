@@ -1,7 +1,7 @@
 // src/components/layout/menuConfig.js
 import {
   IcUser, IcChart, IcCalendar, IcCredit, IcWallet,
-  IcBoxes, IcTag, IcUsers, IcList, IcGrid, IcMail, IcMegaphone
+  IcBoxes, IcTag, IcUsers, IcList, IcGrid, IcMail, IcMegaphone, IcSettings
 } from "./Icons";
 
 export const menu = [
@@ -15,6 +15,7 @@ export const menu = [
   { to: "/personal", label: "Personal", icon: IcUsers },
   { to: "/marketing", label: "Marketing", icon: IcMegaphone },
   { to: "/facturacion", label: "Facturación", icon: IcCredit },
+  { to: "/negocio",     label: "Negocio",     icon: IcSettings, end: true }, // ⬅️ nuevo
   { to: "/perfil", label: "Mi Perfil", icon: IcUser },
   { to: "/contacto", label: "Contacto", icon: IcMail },
 ];

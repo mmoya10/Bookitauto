@@ -31,7 +31,7 @@ export default function Sidebar({
     >
       {/* Header / Logo */}
       <div className="flex items-center justify-between gap-2 px-3 py-3 shrink-0">
-        <button type="button" onClick={() => navigate("/negocio")} className="flex items-center gap-2">
+        <button type="button" className="flex items-center gap-2">
           <div className="grid overflow-hidden border size-10 place-items-center rounded-xl border-white/10 bg-white/5">
             {business?.logoUrl ? (
               <img src={business.logoUrl} alt="Logo" className="object-cover w-full h-full" />
