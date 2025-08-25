@@ -209,77 +209,95 @@ export default function Select({
         <IcChevron className={clsx("text-white transition-transform", open && "rotate-180")} />
       </button>
 
-      {open && (
-        <Portal>
-          <style>{`
-            .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-            .no-scrollbar::-webkit-scrollbar { display: none; }
-          `}</style>
+     {open && (
+  <Portal>
+    <style>{`
+      /* Estilo de scrollbar */
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.15);
+        border-radius: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.25);
+      }
+      /* Firefox */
+      .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.25) transparent;
+      }
+    `}</style>
 
-          {/* capa a pantalla completa para asegurar z-index y aislamiento */}
-          <div className="fixed inset-0 z-[3000] pointer-events-none">
-            <div
-              className="absolute pointer-events-auto"
-              style={{ top: pos.top, left: pos.left, width: pos.width }}
-            >
-              <div
-                ref={listRef}
-                role="listbox"
+    {/* capa a pantalla completa para asegurar z-index y aislamiento */}
+    <div className="fixed inset-0 z-[3000] pointer-events-none">
+      <div
+        className="absolute pointer-events-auto"
+        style={{ top: pos.top, left: pos.left, width: pos.width }}
+      >
+        <div
+          ref={listRef}
+          role="listbox"
+          className={clsx(
+            "custom-scrollbar overflow-auto rounded-xl border border-white/10",
+            "bg-[#0f172a]/95 backdrop-blur-xl shadow-2xl p-1"
+          )}
+          style={{ maxHeight }}
+          tabIndex={-1}
+          onKeyDown={onKeyDown}
+          onWheel={onWheel}
+        >
+          {searchable && (
+            <div className="p-1">
+              <input
+                ref={inputRef}
+                value={q}
+                onChange={(e)=>setQ(e.target.value)}
+                placeholder={searchPlaceholder}
                 className={clsx(
-                  "no-scrollbar overflow-auto rounded-xl border border-white/10",
-                  "bg-[#0f172a]/95 backdrop-blur-xl shadow-2xl p-1"
+                  "w-full rounded-lg border border-white/10 bg-white/10 px-2 py-2",
+                  "text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/15"
                 )}
-                style={{ maxHeight, scrollbarWidth: "none", msOverflowStyle: "none" }}
-                tabIndex={-1}
-                onKeyDown={onKeyDown}
-                onWheel={onWheel}
-              >
-                {searchable && (
-                  <div className="p-1">
-                    <input
-                      ref={inputRef}
-                      value={q}
-                      onChange={(e)=>setQ(e.target.value)}
-                      placeholder={searchPlaceholder}
-                      className={clsx(
-                        "w-full rounded-lg border border-white/10 bg-white/10 px-2 py-2",
-                        "text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-white/15"
-                      )}
-                    />
-                  </div>
-                )}
-
-                {filtered.length === 0 ? (
-                  <div className="px-2 py-2 text-sm text-slate-300">Sin resultados</div>
-                ) : (
-                  filtered.map((o, i) => {
-                    const selected = String(o.value) === String(value ?? "");
-                    const highlighted = i === hiBound;
-                    return (
-                      <div
-                        key={o.value}
-                        role="option"
-                        aria-selected={selected}
-                        onMouseEnter={() => setHi(i)}
-                        onClick={() => selectAt(i)}
-                        className={clsx(
-                          "flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer",
-                          "text-sm",
-                          highlighted ? "bg-white/10 text-zinc-100" : "text-slate-200 hover:bg-white/10",
-                          selected && "ring-1 ring-white/15"
-                        )}
-                      >
-                        <span className="truncate">{o.label}</span>
-                        {selected && <span className="text-[10px] text-slate-300">●</span>}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              />
             </div>
-          </div>
-        </Portal>
-      )}
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="px-2 py-2 text-sm text-slate-300">Sin resultados</div>
+          ) : (
+            filtered.map((o, i) => {
+              const selected = String(o.value) === String(value ?? "");
+              const highlighted = i === hiBound;
+              return (
+                <div
+                  key={o.value}
+                  role="option"
+                  aria-selected={selected}
+                  onMouseEnter={() => setHi(i)}
+                  onClick={() => selectAt(i)}
+                  className={clsx(
+                    "flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer",
+                    "text-sm",
+                    highlighted ? "bg-white/10 text-zinc-100" : "text-slate-200 hover:bg-white/10",
+                    selected && "ring-1 ring-white/15"
+                  )}
+                >
+                  <span className="truncate">{o.label}</span>
+                  {selected && <span className="text-[10px] text-slate-300">●</span>}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  </Portal>
+)}
+
     </>
   );
 }
