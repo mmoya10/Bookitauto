@@ -16,6 +16,6 @@ export const menu = [
   { to: "/marketing", label: "Marketing", icon: IcMegaphone },
   { to: "/facturacion", label: "Facturación", icon: IcCredit },
   { to: "/negocio",     label: "Negocio",     icon: IcSettings, end: true }, // ⬅️ nuevo
-  { to: "/perfil", label: "Mi Perfil", icon: IcUser },
+  { to: "/perfil", label: "Perfil", icon: IcUser },
   { to: "/contacto", label: "Contacto", icon: IcMail },
 ];
