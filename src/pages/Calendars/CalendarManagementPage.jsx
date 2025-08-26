@@ -7,6 +7,8 @@ import { Input, Select } from "../../components/common/Input";
 import Portal from "../../components/common/Portal";
 import SelectableGallery from "../../components/common/SelectableGallery";
 import MultiSelect from "../../components/common/MultiSelect";
+import { Funnel } from "lucide-react";
+
 
 import {
   fetchCalendars,
@@ -64,6 +66,13 @@ const mSetActiveBooking = useMutation({
   const [fTypes, setFTypes] = useState([]); // ['main','extra']
 
   // Calendars (filtered by query + filters)
+  // Lista completa (para los combos), sin filtros
+const { data: allCalendars = [] } = useQuery({
+  queryKey: ["cm-calendars-all"],
+  queryFn: () => fetchCalendars({}), // sin filtros
+  enabled: !!sites, // o true, según prefieras
+});
+
   const { data: calendars = [] } = useQuery({
     queryKey: ["cm-calendars", q, fCats, fStaff, fTypes, fCals],
     queryFn: () =>
@@ -106,6 +115,7 @@ const mSetActiveBooking = useMutation({
     const [view, setView] = useState("cards"); // 'cards' | 'table'
   const [modal, setModal] = useState(null); // { mode:'create'|'edit', calendar? }
   const [tab, setTab] = useState("calendars"); // 'calendars' | 'menus'
+  const [filtersOpenCM, setFiltersOpenCM] = useState(false); // móvil: filtros abiertos/cerrados
 
 
   // Gestión booking sites (panel)
@@ -119,8 +129,11 @@ const mSetActiveBooking = useMutation({
 
 
   // Opciones para MultiSelect
-  const optCats = useMemo(() => categories.map((c) => ({ id: c.id, label: c.label })), [categories]);
-  const optCals = useMemo(() => calendars.map((c) => ({ id: c.id, label: c.name })), [calendars]);
+  const optCats = useMemo(() => categories.map((c) => ({ id: c.id, label: c.name })), [categories]);
+const optCals = useMemo(
+  () => allCalendars.map((c) => ({ id: c.id, label: c.name })),
+  [allCalendars]
+);
   const optStaff = useMemo(() => staff.map((p) => ({ id: p.id, label: p.name })), [staff]);
   const optTypes = [
     { id: "main", label: "Principales" },
@@ -155,58 +168,79 @@ const mSetActiveBooking = useMutation({
         tab === "menus" ? "bg-white/20 text-white" : "text-slate-300 hover:text-zinc-100"
       )}
     >
-      Páginas de reserva
+      Menús de reserva
     </button>
   </div>
 </header>
 
 
       {/* ===== Sección 1: Filtros + Acciones ===== */}
-      {tab === "calendars" && (
-      <section className={clsx(glassCard, "p-4 z-30")}>
-        <div className="grid items-end gap-3 md:grid-cols-3 lg:grid-cols-6">
-          <div className="grid gap-1.5">
-            <span className="text-xs text-slate-300">Buscar</span>
-            <Input placeholder="Nombre o descripción…" value={q} onChange={(e) => setQ(e.target.value)} />
-          </div>
+{tab === "calendars" && (
+  <>
+  <section className={clsx(glassCard, "p-4 relative z-0")}>
+    {/* Botón Filtros (solo móvil) */}
+    <div className="mb-3 md:hidden">
+      <button
+        type="button"
+        onClick={() => setFiltersOpenCM(v => !v)}
+        className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
+        title="Mostrar/ocultar filtros"
+      >
+        <Funnel size={16} className="opacity-80" />
+        Filtros
+      </button>
+    </div>
 
-          
-
-          <div className="grid gap-1.5">
-            <span className="text-xs text-slate-300">Categorías</span>
-            <MultiSelect items={optCats} values={fCats} onChange={setFCats} />
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-xs text-slate-300">Calendarios</span>
-            <MultiSelect items={optCals} values={fCals} onChange={setFCals} />
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-xs text-slate-300">Personal</span>
-            <MultiSelect items={optStaff} values={fStaff} onChange={setFStaff} />
-          </div>
-
-          <div className="grid gap-1.5">
-            <span className="text-xs text-slate-300">Tipo</span>
-            <MultiSelect items={optTypes} values={fTypes} onChange={setFTypes} showSelectAll={false} />
-          </div>
+    {/* Contenido colapsable en móvil; siempre visible en desktop */}
+    <div className={clsx(filtersOpenCM ? "block" : "hidden", "md:block")}>
+      <div className="grid items-end gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-1.5">
+          <span className="text-xs text-slate-300">Buscar</span>
+          <Input
+            placeholder="Nombre o descripción…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
         </div>
 
+        <div className="grid gap-1.5">
+          <span className="text-xs text-slate-300">Categorías</span>
+          <MultiSelect items={optCats} values={fCats} onChange={setFCats} />
+        </div>
 
-       <div className="flex flex-wrap gap-2 mt-3">
+        <div className="grid gap-1.5">
+          <span className="text-xs text-slate-300">Calendarios</span>
+          <MultiSelect items={optCals} values={fCals} onChange={setFCals} />
+        </div>
 
+        <div className="grid gap-1.5">
+          <span className="text-xs text-slate-300">Personal</span>
+          <MultiSelect items={optStaff} values={fStaff} onChange={setFStaff} />
+        </div>
 
-  <Button
-    variant="primary"
-    onClick={() => setModal({ mode: "create", calendar: { type: "main" } })}
-  >
-    + Añadir calendario
-  </Button>
-</div>
+        <div className="grid gap-1.5">
+          <span className="text-xs text-slate-300">Tipo</span>
+          <MultiSelect
+            items={optTypes}
+            values={fTypes}
+            onChange={setFTypes}
+            showSelectAll={false}
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+   <div className="flex flex-wrap gap-2 mt-3">
+      <Button
+        variant="primary"
+        onClick={() => setModal({ mode: "create", calendar: { type: "main" } })}
+      >
+        + Añadir calendario
+      </Button>
+    </div>
+  </>
+)}
 
-      </section>
-      )}
 
       {/* ===== Sección 2: Listado ===== */}
       {/* ===== Panel: Gestión booking sites ===== */}
@@ -307,12 +341,13 @@ const mSetActiveBooking = useMutation({
 
     <div className="mt-4">
       <BookingSiteForm
-        site={sites.find((s) => s.id === manageSiteId)}
-        categories={categories}
-        calendars={calendars}
-        submitting={mUpdateSite.isPending}
-        onSubmit={(payload) => mUpdateSite.mutate(payload)}
-      />
+  site={sites.find((s) => s.id === manageSiteId)}
+  categories={categories}
+  calendars={allCalendars}   // ⬅️ aquí, no los filtrados
+  submitting={mUpdateSite.isPending}
+  onSubmit={(payload) => mUpdateSite.mutate(payload)}
+/>
+
     </div>
   </section>
 )}

@@ -31,6 +31,7 @@ import esLocale from "@fullcalendar/core/locales/es";
 import resourcePlugin from "@fullcalendar/resource";
 import resourceTimeGridPlugin from "@fullcalendar/resource-timegrid";
 import MultiSelect from "../../components/common/MultiSelect";
+import { Funnel } from "lucide-react";
 
 // Mocks simples en el front (puedes cambiarlos cuando tengas API real)
 
@@ -379,30 +380,25 @@ resourceId: staffMode ? (e.staffId ?? null) : undefined,
       </header>
 
       {/* ======= Filtros ======= */}
-      <section className={clsx(glassCard, "p-4 relative z-30")}>
+<section className={clsx(
+  glassCard,
+  "p-4 relative",
+  filtersOpen ? "z-10" : "z-0" // o directamente "z-0"
+)}>
         {" "}
         {/* ⬅️ z-30 */}
         {/* Botón de abrir/cerrar filtros (solo móvil) */}
         <div className="mb-3 md:hidden">
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((v) => !v)}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
-            title="Mostrar/ocultar filtros"
-          >
-            {/* icono filtro */}
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="opacity-80"
-            >
-              <path d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm-2 6h14v2H5v-2z" />
-            </svg>
-            Filtros
-          </button>
-        </div>
+   <button
+     type="button"
+     onClick={() => setFiltersOpen((v) => !v)}
+     className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
+     title="Mostrar/ocultar filtros"
+   >
+     <Funnel size={16} className="opacity-80" />
+     Filtros
+   </button>
+ </div>
         {/* Contenido colapsable: en móvil se oculta si filtersOpen=false; en desktop siempre visible */}
         <div className={clsx(filtersOpen ? "block" : "hidden", "md:block")}>
           <div className="grid gap-3 md:grid-cols-5">
@@ -536,7 +532,7 @@ resources={resources}
             week: "Semana",
             day: "Día",
           }}
-          titleFormat={{ year: "numeric", month: "long", day: "numeric" }}
+          titleFormat={{ year: "numeric", month: "short", day: "numeric" }}
           height="auto"
           expandRows
           slotMinTime="07:00:00"
