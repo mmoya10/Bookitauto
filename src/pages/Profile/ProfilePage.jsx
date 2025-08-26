@@ -7,18 +7,6 @@ import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import ScheduleManager from "../../components/common/ScheduleManager";
 
-
-/* ===== Utiles ===== */
-const days = [
-  { key: "mon", label: "Lunes" },
-  { key: "tue", label: "Martes" },
-  { key: "wed", label: "Miércoles" },
-  { key: "thu", label: "Jueves" },
-  { key: "fri", label: "Viernes" },
-  { key: "sat", label: "Sábado" },
-  { key: "sun", label: "Domingo" },
-];
-
 const glassCard =
   "rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.25)]";
 
@@ -28,7 +16,9 @@ export default function ProfilePage() {
     <div className="space-y-6 text-zinc-100">
       <header className="mb-2">
         <h1 className="text-xl font-semibold">Mi Perfil</h1>
-        <p className="text-sm text-slate-300">Gestiona tus datos, tu horario y tus ausencias.</p>
+        <p className="text-sm text-slate-300">
+          Gestiona tus datos, tu horario y tus ausencias.
+        </p>
       </header>
 
       <ProfileSection />
@@ -64,7 +54,9 @@ function ProfileSection() {
     defaultValues: me,
   });
 
-  useEffect(() => { if (me) reset(me); }, [me, reset]);
+  useEffect(() => {
+    if (me) reset(me);
+  }, [me, reset]);
 
   const [preview, setPreview] = useState("");
 
@@ -85,7 +77,9 @@ function ProfileSection() {
     <section className={clsx(glassCard, "p-5")}>
       <div className="mb-3">
         <h2 className="text-base font-semibold">Datos personales</h2>
-        <p className="text-xs text-slate-300">Actualiza tu información básica.</p>
+        <p className="text-xs text-slate-300">
+          Actualiza tu información básica.
+        </p>
       </div>
 
       <form
@@ -97,18 +91,28 @@ function ProfileSection() {
           <div className="relative">
             <img
               src={
-                preview || watch("avatarUrl") ||
-                `https://api.dicebear.com/9.x/initials/svg?seed=${watch("firstName") || "U"}`
+                preview ||
+                watch("avatarUrl") ||
+                `https://api.dicebear.com/9.x/initials/svg?seed=${
+                  watch("firstName") || "U"
+                }`
               }
               alt="avatar"
               className="object-cover border rounded-full size-28 border-white/10 bg-white/10"
             />
             <label className="absolute bottom-0 right-0 grid text-xs border rounded-full cursor-pointer size-8 place-items-center border-white/10 bg-white/20 hover:bg-white/30">
-              <input type="file" onChange={onFileChange} className="hidden" accept="image/*" />
+              <input
+                type="file"
+                onChange={onFileChange}
+                className="hidden"
+                accept="image/*"
+              />
               ✏️
             </label>
           </div>
-          <div className="text-[11px] text-slate-400">PNG/JPG, máx. 2MB (demo local)</div>
+          <div className="text-[11px] text-slate-400">
+            PNG/JPG, máx. 2MB (demo local)
+          </div>
         </div>
 
         {/* Campos */}
@@ -120,7 +124,11 @@ function ProfileSection() {
             <Input placeholder="Apellidos" {...register("lastName")} />
           </Field>
           <Field label="Correo">
-            <Input type="email" placeholder="nombre@empresa.com" {...register("email")} />
+            <Input
+              type="email"
+              placeholder="nombre@empresa.com"
+              {...register("email")}
+            />
           </Field>
           <Field label="Teléfono">
             <Input placeholder="+34 600 000 000" {...register("phone")} />
@@ -132,7 +140,11 @@ function ProfileSection() {
 
         {/* Acciones */}
         <div className="flex items-center gap-2 md:col-start-2">
-          <Button type="submit" variant="primary" disabled={updateProfile.isPending}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={updateProfile.isPending}
+          >
             {updateProfile.isPending ? "Guardando…" : "Guardar cambios"}
           </Button>
           <Button type="button" variant="ghost" onClick={() => reset()}>
@@ -154,9 +166,9 @@ function ScheduleSection() {
       fetchSchedule={async () => {
         try {
           const r = await api.get("/me/schedule");
-          return r.data;               // el manager ya normaliza
+          return r.data; // el manager ya normaliza
         } catch {
-          return {};                   // el manager aplica defaults
+          return {}; // el manager aplica defaults
         }
       }}
       saveSchedule={(payload) => api.post("/me/schedule", payload)}
@@ -173,5 +185,3 @@ function Field({ label, children }) {
     </label>
   );
 }
-
-

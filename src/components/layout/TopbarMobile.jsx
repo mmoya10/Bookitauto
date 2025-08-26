@@ -14,10 +14,9 @@ export default function TopbarMobile({
   activeBranchId,
   setActiveBranchId,
 }) {
-  const navigate = useNavigate();
 
   return (
-    <header className={clsx("md:hidden sticky top-0 z-30 flex items-center justify-between px-3 py-2", glass)}>
+    <header className={clsx("md:hidden sticky top-0 z-30 flex items-center justify-between px-3 h-14 py-0 flex-none", glass)}>
       <div className="flex items-center gap-2">
         <button
           onClick={onOpenMenu}

@@ -22,3 +22,44 @@ html, body, #root {
     font-size: 16px !important;
   }
 }
+
+/* FullCalendar header responsive */
+.fc .fc-toolbar {
+  display: flex;
+  flex-wrap: wrap;            /* permite saltar de línea */
+  gap: .5rem;
+}
+@media (max-width: 640px) {
+  .fc .fc-toolbar .fc-toolbar-chunk {
+    width: 100%;              /* cada bloque ocupa una fila */
+    display: flex;
+    justify-content: center;  /* centrado bonito */
+  }
+  /* Botonera de vistas: que no se amontone */
+  .fc .fc-toolbar .fc-button-group {
+    flex-wrap: wrap;
+    gap: .25rem;
+  }
+  .fc .fc-button {            /* botones cómodos en móvil */
+    padding: .35rem .6rem;
+    font-size: .85rem;
+  }
+}
+/* Eventos FullCalendar: evitar mezclas raras y recortes */
+.fc .fc-event {
+  overflow: hidden;
+  mix-blend-mode: normal;
+  isolation: isolate;
+}
+.apt-soft::after {
+  /* sutil realce interior (línea superior) sin transparencia contra otras capas */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+}
+/* Encabezado de cada columna de recurso (resourceTimeGrid) en negro */
+.fc .fc-col-header .fc-col-header-cell .fc-col-header-cell-cushion {
+  color: #4B496A !important;
+}

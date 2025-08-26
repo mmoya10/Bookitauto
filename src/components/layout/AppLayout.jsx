@@ -34,8 +34,8 @@ export default function AppLayout() {
 
   return (
     <div
-      className="min-h-screen grid md:grid-cols-[auto_1fr] text-zinc-100
-      bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.20),transparent_40%),radial-gradient(1200px_600px_at_90%_90%,rgba(34,211,238,0.20),transparent_40%),linear-gradient(120deg,#0f172a,#1e293b)]"
+      className="min-h-[100svh] flex flex-col md:grid md:grid-cols-[auto_1fr] text-zinc-100 bg-fixed bg-no-repeat
+bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40%),radial-gradient(1200px_600px_at_90%_90%,rgba(34,211,238,0.40),transparent_40%),linear-gradient(120deg,#0f172a,#1e293b)]"
     >
       {/* Sidebar desktop */}
       <Sidebar
@@ -58,7 +58,7 @@ export default function AppLayout() {
       />
 
       {/* Main */}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <main className="p-6">
           <Outlet />
         </main>
