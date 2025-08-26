@@ -139,12 +139,12 @@ export default function MobileDrawer({
     {/* Salir */}
     <button
       onClick={() => { setSettingsMode(false); onClose(); logout(); }}
-      className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-600/80 hover:bg-red-600 px-3 py-2 text-sm text-white"
+      className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-[linear-gradient(90deg,#FF2900,#F7775E)] hover:bg-red-600 px-3 py-2 text-sm text-white"
       aria-label="Cerrar sesión"
       title="Cerrar sesión"
     >
       <IcDoorOut width={20} height={20}/>
-      <span className="truncate">Salir</span>
+      <span className="truncate">Exit</span>
     </button>
   </div>
 </div>

@@ -67,7 +67,7 @@ const mSetActiveBooking = useMutation({
   const { data: calendars = [] } = useQuery({
     queryKey: ["cm-calendars", q, fCats, fStaff, fTypes, fCals],
     queryFn: () =>
-      fetchCalendars({
+      fetchCalendars({ 
         q,
         categoryIds: fCats,
         staffIds: fStaff,
@@ -105,6 +105,8 @@ const mSetActiveBooking = useMutation({
   // UI State
     const [view, setView] = useState("cards"); // 'cards' | 'table'
   const [modal, setModal] = useState(null); // { mode:'create'|'edit', calendar? }
+  const [tab, setTab] = useState("calendars"); // 'calendars' | 'menus'
+
 
   // Gestión booking sites (panel)
   const [manageSitesOpen, setManageSitesOpen] = useState(false);
@@ -127,12 +129,40 @@ const mSetActiveBooking = useMutation({
 
   return (
     <div className="space-y-6 text-zinc-100">
-      <header>
-        <h1 className="text-xl font-semibold">Calendar Management</h1>
-        <p className="text-sm text-slate-300">Gestiona calendarios, categorías, visibilidad en booking y personal.</p>
-      </header>
+     <header className="flex flex-col gap-3">
+  <h1 className="text-xl font-semibold">Gestión de calendarios</h1>
+  <p className="text-sm text-slate-300">
+    Administra calendarios y la visibilidad en las páginas de reserva.
+  </p>
+
+  {/* Tabs */}
+  <div className="inline-flex rounded-xl border border-white/10 bg-white/10 p-1 w-fit">
+    <button
+      type="button"
+      onClick={() => setTab("calendars")}
+      className={clsx(
+        "px-3 py-1 text-sm rounded-lg transition-colors",
+        tab === "calendars" ? "bg-white/20 text-white" : "text-slate-300 hover:text-zinc-100"
+      )}
+    >
+      Calendarios
+    </button>
+    <button
+      type="button"
+      onClick={() => setTab("menus")}
+      className={clsx(
+        "px-3 py-1 text-sm rounded-lg transition-colors",
+        tab === "menus" ? "bg-white/20 text-white" : "text-slate-300 hover:text-zinc-100"
+      )}
+    >
+      Páginas de reserva
+    </button>
+  </div>
+</header>
+
 
       {/* ===== Sección 1: Filtros + Acciones ===== */}
+      {tab === "calendars" && (
       <section className={clsx(glassCard, "p-4 z-30")}>
         <div className="grid items-end gap-3 md:grid-cols-3 lg:grid-cols-6">
           <div className="grid gap-1.5">
@@ -165,12 +195,7 @@ const mSetActiveBooking = useMutation({
 
 
        <div className="flex flex-wrap gap-2 mt-3">
-  <Button
-    variant="secondary"
-    onClick={() => setManageSitesOpen(true)}
-  >
-    Gestionar booking sites
-  </Button>
+
 
   <Button
     variant="primary"
@@ -181,20 +206,19 @@ const mSetActiveBooking = useMutation({
 </div>
 
       </section>
+      )}
 
       {/* ===== Sección 2: Listado ===== */}
       {/* ===== Panel: Gestión booking sites ===== */}
-{manageSitesOpen && (
+{tab === "menus" && (
   <section className={clsx(glassCard, "p-4")}>
+
     <div className="flex items-center justify-between mb-3">
       <div>
         <h2 className="text-base font-semibold">Gestionar booking sites</h2>
         <p className="text-xs text-slate-300">
           Ver/editar visibilidad de categorías y calendarios del site seleccionado. Solo puede haber un site activo.
         </p>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="ghost" onClick={() => setManageSitesOpen(false)}>Cerrar</Button>
       </div>
     </div>
 
@@ -292,6 +316,7 @@ const mSetActiveBooking = useMutation({
     </div>
   </section>
 )}
+{tab === "calendars" && (
 
       <SelectableGallery
         className="p-4"
@@ -332,7 +357,7 @@ const mSetActiveBooking = useMutation({
 if (window.confirm(`¿Eliminar ${ids.length} calendario(s)?`)) mDelete.mutate(ids);
         }}
       />
-
+)}
       {/* ===== Modal Calendario ===== */}
       {modal && (
         <Portal>

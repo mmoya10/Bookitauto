@@ -7,9 +7,9 @@ const rid = () => Math.random().toString(36).slice(2, 10);
 /* ================= Catálogos ================= */
 
 let memCategories = [
-  { id: "cat_cut", label: "Cortes" },
-  { id: "cat_color", label: "Color" },
-  { id: "cat_spa", label: "Spa" },
+  { id: "cat_cut", name: "Cortes" },
+  { id: "cat_color", name: "Color" },
+  { id: "cat_spa", name: "Spa" },
 ];
 
 let memStaff = [

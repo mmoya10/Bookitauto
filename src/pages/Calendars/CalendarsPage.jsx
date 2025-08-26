@@ -428,7 +428,7 @@ resourceId: staffMode ? (e.staffId ?? null) : undefined,
                 items={(categories ?? []).map((c) => ({
                   id: c.id,
                   label: c.name,
-                }))}
+                }))} 
                 values={selectedCategories}
                 onChange={setSelectedCategories}
                 placeholder="Todas las categorías"
@@ -481,14 +481,7 @@ resourceId: staffMode ? (e.staffId ?? null) : undefined,
           + Añadir cita
         </Button>
 
-        {(viewType === "timeGridWeek" || viewType === "timeGridDay") && (
-          <Button
-            variant={showGaps ? "danger" : "ghost"}
-            onClick={() => setShowGaps((s) => !s)}
-          >
-            {showGaps ? "Ocultar huecos" : "Mostrar huecos"}
-          </Button>
-        )}
+        
         {(viewType === "timeGridDay" || viewType === "resourceTimeGridDay") && (
           <Button
             variant={staffMode ? "danger" : "ghost"}
@@ -513,7 +506,7 @@ resourceId: staffMode ? (e.staffId ?? null) : undefined,
           className="inline-flex items-center px-3 py-2 text-sm border rounded-xl border-white/10 bg-white/10 text-zinc-100 hover:bg-white/15"
           title="Gestión de calendarios"
         >
-          ⚙️ Gestión
+          Editar calendarios
         </Link>
       </div>
 
