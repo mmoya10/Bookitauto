@@ -402,11 +402,6 @@ function iso(day, hh, mm) {
   )}:00`;
 }
 
-function seedRand(seed0 = 42) {
-  let s = seed0;
-  return () => (s = (s * 1664525 + 1013904223) % 2 ** 32) / 2 ** 32;
-}
-
 // === Generación de citas de prueba (semana actual; si sábado/domingo, también la siguiente) ===
 
 // Lunes=1 ... Domingo=7
@@ -432,10 +427,6 @@ function weekDaysFrom(mondayDate) {
   }
   return out;
 }
-function choose(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
 function daysToGenerate() {
   const now = new Date();
   const monday = startOfISOWeek(now);

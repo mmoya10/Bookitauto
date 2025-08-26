@@ -2,7 +2,6 @@
 import clsx from "clsx";
 import { IcMenu, IcGrid } from "./Icons";
 import Select from "../../components/common/Select";
-import { useNavigate } from "react-router-dom";
 
 const glass = "border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
 
@@ -42,7 +41,7 @@ export default function TopbarMobile({
           <div className="text-sm font-semibold leading-4 truncate max-w-[40vw]">
             {business?.nombre ?? "Mi Negocio"}
           </div>
-        </button>
+        </button> 
       </div>
 
       {branchMode && (

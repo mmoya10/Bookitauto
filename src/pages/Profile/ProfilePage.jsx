@@ -5,7 +5,6 @@ import clsx from "clsx";
 import api from "../../api/client";
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
-import ScheduleManager from "../../components/common/ScheduleManager";
 
 const glassCard =
   "rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.25)]";
@@ -22,7 +21,6 @@ export default function ProfilePage() {
       </header>
 
       <ProfileSection />
-      <ScheduleSection />
     </div>
   );
 }
@@ -153,26 +151,6 @@ function ProfileSection() {
         </div>
       </form>
     </section>
-  );
-}
-
-/* ===== Sección 2: Horario ===== */
-function ScheduleSection() {
-  return (
-    <ScheduleManager
-      title="Horario"
-      description="Define tus franjas laborables por día. Vista semanal (L → D) y días especiales."
-      queryKey={["me-schedule"]}
-      fetchSchedule={async () => {
-        try {
-          const r = await api.get("/me/schedule");
-          return r.data; // el manager ya normaliza
-        } catch {
-          return {}; // el manager aplica defaults
-        }
-      }}
-      saveSchedule={(payload) => api.post("/me/schedule", payload)}
-    />
   );
 }
 

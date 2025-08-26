@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import useLocalStorage from "../../hooks/useLocalStorage";
 import { useAuth } from "../../hooks/useAuth";
-import { IcChevron, IcGrid } from "./Icons";
+import { IcChevron, IcGrid, IcGear, IcClose, IcDoorOut } from "./Icons";
 import Select from "../../components/common/Select";
 
 const glass = "border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
@@ -15,18 +15,21 @@ export default function Sidebar({
   branchMode,
   activeBranchId,
   setActiveBranchId,
+  settingsMode,
+  setSettingsMode,
 }) {
+
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  useNavigate();
   const [expanded, setExpanded] = useLocalStorage("sidebar:expanded", true);
 
-  return (
+  return ( 
     <aside
       className={clsx(
         "hidden md:flex sticky top-0 h-screen flex-col",
         glass,
         "transition-[width] duration-300",
-        expanded ? "w-64" : "w-[84px]"
+        expanded ? "w-64" : "w-[100px]"
       )}
     >
       {/* Header / Logo */}
@@ -50,7 +53,7 @@ export default function Sidebar({
 
         <button
           onClick={() => setExpanded(e => !e)}
-          className="grid border rounded-lg size-8 place-items-center border-white/10 bg-white/10 hover:bg-white/15"
+          className="grid border rounded-lg size-8 place-items-center border-white/10 bg-white/40 hover:bg-white/15"
           title={expanded ? "Colapsar" : "Expandir"}
         >
           <IcChevron className={clsx("transition-transform", expanded ? "" : "rotate-180")} />
@@ -97,7 +100,7 @@ export default function Sidebar({
 
                 {!expanded && (
                   <span className={clsx(
-                    "pointer-events-none absolute left-[78px] z-10 rounded-md border border-white/10 bg-[#111827]/90 px-2 py-1 text-xs text-zinc-100 shadow-lg",
+                    "pointer-events-none absolute left-[96px] z-10 rounded-md border border-white/10 bg-[#111827]/90 px-2 py-1 text-xs text-zinc-100 shadow-lg",
                     "opacity-0 translate-x-[-6px] group-hover:opacity-100 group-hover:translate-x-0"
                   )}>
                     {label}
@@ -109,21 +112,43 @@ export default function Sidebar({
         </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-3 border-t border-white/10 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className={clsx("text-xs text-slate-400 transition-all",
-            expanded ? "opacity-100" : "opacity-0 w-0 pointer-events-none")}>
-            {user?.nombreUsuario ?? "Admin"} · {user?.rol ?? "admin"}
-          </div>
-          <button
-            onClick={() => logout()}
-            className="px-2 py-1 text-xs border rounded-lg border-white/10 bg-white/10 hover:bg-white/15"
-          >
-            Salir
-          </button>
-        </div>
-      </div>
+     {/* Footer */}
+{/* Footer */}
+{/* Footer */}
+<div className="px-3 py-3 border-t border-white/10 shrink-0">
+  <div className="flex items-center gap-2 w-full">
+    {/* Ajustes / Cerrar */}
+    <button
+      onClick={() => setSettingsMode(v => !v)}
+      className={clsx(
+        "flex-1 flex items-center justify-center gap-2 rounded-lg border transition-colors px-2 py-2",
+        "border-white/10 bg-white/10 hover:bg-white/15 text-zinc-100"
+      )}
+      title={settingsMode ? "Cerrar ajustes" : "Ajustes"}
+    >
+      {settingsMode ? <IcClose width={16} height={16}/> : <IcGear width={16} height={16}/>}
+      {/* Texto solo cuando la barra está expandida */}
+      <span className={clsx(expanded ? "inline" : "hidden", "text-xs")}>
+        {settingsMode ? "Cerrar" : "Ajustes"}
+      </span>
+    </button>
+
+    {/* Salir */}
+    <button
+      onClick={() => logout()}
+      className={clsx(
+        "flex-1 flex items-center justify-center gap-2 rounded-lg border transition-colors px-2 py-2",
+        "border-red-500/30 bg-red-600/80 hover:bg-red-600 text-white"
+      )}
+      title="Cerrar sesión"
+    >
+      <IcDoorOut width={16} height={16}/>
+      <span className={clsx(expanded ? "inline" : "hidden", "text-xs")}>Salir</span>
+    </button>
+  </div>
+</div>
+
+
     </aside>
   );
 }

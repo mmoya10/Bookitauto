@@ -21,6 +21,7 @@ import SpacesPage from './pages/Spaces/SpacesPage';
 import LoginPage from './pages/Auth/LoginPage';
 import Marketing from "./pages/Marketing/Marketing";
 import Negocio from "./pages/Negocio/Negocio";
+import Schedule from "./pages/Schedule/SchedulePage";
 import BookingSitePublic from "./pages/Booking/BookingSitePublic";
 
 
@@ -54,6 +55,7 @@ export default function App() {
               <Route path="contacto" element={<ContactsPage />} />
               <Route path="marketing" element={<Marketing />} />
                <Route path="negocio" element={<Negocio />} />
+               <Route path="schedule" element={<Schedule />} />
             </Route>
 
             {/* comodín */}

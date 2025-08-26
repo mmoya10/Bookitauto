@@ -1,21 +1,39 @@
 // src/components/layout/menuConfig.js
 import {
-  IcUser, IcChart, IcCalendar, IcCredit, IcWallet,
-  IcBoxes, IcTag, IcUsers, IcList, IcGrid, IcMail, IcMegaphone, IcSettings
+  IcProfile,
+  IcChart,
+  IcCalendar,
+  IcFacturacion,
+  IcBoxes,
+  IcProducts,
+  IcUsers,
+  IcList,
+  IcGrid,
+  IcMegaphone,
+  IcBusiness,
+  IcHorario,
 } from "./Icons";
 
-export const menu = [
-  { to: "/calendarios", label: "Calendarios", icon: IcCalendar },
-  { to: "/productos", label: "Productos", icon: IcTag },
-  { to: "/caja", label: "Caja", icon: IcWallet },
+/**
+ * Menú principal normal
+ */
+export const mainMenu = [
+  { to: "/calendarios", label: "Calendario", icon: IcCalendar },
+  { to: "/productos", label: "Productos", icon: IcProducts },
   { to: "/stock", label: "Stock", icon: IcBoxes },
-  { to: "/espacios", label: "Espacios & Equipos", icon: IcGrid },
   { to: "/usuarios", label: "Usuarios", icon: IcList },
-  { to: "/informes", label: "Informes", icon: IcChart },
-  { to: "/personal", label: "Personal", icon: IcUsers },
   { to: "/marketing", label: "Marketing", icon: IcMegaphone },
-  { to: "/facturacion", label: "Facturación", icon: IcCredit },
-  { to: "/negocio",     label: "Negocio",     icon: IcSettings, end: true }, // ⬅️ nuevo
-  { to: "/perfil", label: "Perfil", icon: IcUser },
-  { to: "/contacto", label: "Contacto", icon: IcMail },
+  { to: "/espacios", label: "Espacios & Equipos", icon: IcGrid },
+  { to: "/informes", label: "Informes", icon: IcChart },
+];
+
+/**
+ * Menú modo ajustes (solo Perfil y Negocio)
+ */
+export const settingsMenu = [
+  { to: "/perfil", label: "Perfil", icon: IcProfile },
+  { to: "/schedule", label: "Horario", icon: IcHorario },
+  { to: "/personal", label: "Personal", icon: IcUsers },
+  { to: "/negocio", label: "Negocio", icon: IcBusiness, end: true },
+  { to: "/facturacion", label: "Facturación", icon: IcFacturacion },
 ];

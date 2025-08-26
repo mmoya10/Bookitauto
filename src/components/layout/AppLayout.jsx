@@ -6,13 +6,17 @@ import useLocalStorage from "../../hooks/useLocalStorage";
 import NotifyBell from "../notifications/NotifyBell";
 
 import { fetchBusiness, fetchBranches } from "../../api/business";
-import { menu } from "./menuConfig";
+import { mainMenu, settingsMenu } from "./menuConfig";
 
 import Sidebar from "./Sidebar";
 import TopbarMobile from "./TopbarMobile";
 import MobileDrawer from "./MobileDrawer";
 
 export default function AppLayout() {
+  const [settingsMode, setSettingsMode] = useState(false);
+
+// Menú activo según modo
+const menu = settingsMode ? settingsMenu : mainMenu;
   // Business + branches
   const { data: business } = useQuery({ queryKey: ["business"], queryFn: fetchBusiness });
   const { data: branches } = useQuery({
@@ -29,7 +33,7 @@ export default function AppLayout() {
     return ok ? ok.id : branches[0].id;
   }, [branches, activeBranchId]);
 
-  // Mobile drawer
+  // Mobile drawer 
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -39,13 +43,15 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
     >
       {/* Sidebar desktop */}
       <Sidebar
-        menu={menu}
-        business={business}
-        branches={branches}
-        branchMode={!!business?.branchMode}
-        activeBranchId={resolvedActiveBranchId}
-        setActiveBranchId={setActiveBranchId}
-      />
+  menu={menu}
+  business={business}
+  branches={branches}
+  branchMode={!!business?.branchMode}
+  activeBranchId={resolvedActiveBranchId}
+  setActiveBranchId={setActiveBranchId}
+  settingsMode={settingsMode}
+  setSettingsMode={setSettingsMode}
+/>
 
       {/* Topbar móvil */}
       <TopbarMobile
@@ -65,16 +71,18 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
       </div>
 
       {/* Drawer móvil */}
-      <MobileDrawer
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        menu={menu}
-        business={business}
-        branchMode={!!business?.branchMode}
-        branches={branches}
-        activeBranchId={resolvedActiveBranchId}
-        setActiveBranchId={setActiveBranchId}
-      />
+     <MobileDrawer
+  open={mobileOpen}
+onClose={() => { setMobileOpen(false); setSettingsMode(false); }}  menu={menu}
+  business={business}
+  branchMode={!!business?.branchMode}
+  branches={branches}
+  activeBranchId={resolvedActiveBranchId}
+  setActiveBranchId={setActiveBranchId}
+  settingsMode={settingsMode}
+  setSettingsMode={setSettingsMode}
+/>
+
 
       {/* Notificaciones flotantes */}
       <NotifyBell />

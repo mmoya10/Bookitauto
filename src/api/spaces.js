@@ -2,37 +2,37 @@
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let featureEnabled = false;
-
 let spaces = [
   {
     id: "sp-1",
-    name: "Sala Principal",
-    description: "Espacio amplio para cortes y color.",
-    capacity: 6,
-    imageUrl: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=800&auto=format&fit=crop",
+    name: "Equipo de láser depilación",
+    description: "Máquina profesional para depilación láser.",
+    capacity: 1,
+    imageUrl: "https://tienda.fisaude.com/imagemagic.php?img=images/maquina-depilacion-laser-trionda.jpg&page=prod_info&w=600&h=600",
   },
   {
     id: "sp-2",
-    name: "Cabina 1",
-    description: "Tratamientos individuales.",
-    capacity: 1,
-    imageUrl: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=900&auto=format&fit=crop",
+    name: "Sala",
+    description: "Espacio privado para tratamientos individuales.",
+    capacity: 4,
+    imageUrl: "https://cncentrosdenegocios.com/wp-content/uploads/2024/04/Sala-Premium-1.jpg",
   },
   {
     id: "sp-3",
-    name: "Cabina 2",
-    description: "Uñas y manicura.",
+    name: "Camas de masaje",
+    description: "Camillas cómodas para masajes y terapias.",
     capacity: 2,
-    imageUrl: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?q=80&w=900&auto=format&fit=crop",
+    imageUrl: "https://m.media-amazon.com/images/I/61uZH5YM8qL._UF1000,1000_QL80_.jpg",
   },
   {
     id: "sp-4",
-    name: "Zona Barber",
-    description: "Barbería especializada.",
-    capacity: 3,
-    imageUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=900&auto=format&fit=crop",
+    name: "Máquina de rizos",
+    description: "Equipo automático para rizos y peinados.",
+    capacity: 1,
+    imageUrl: "https://cremaslaniquerena.com/cdn/shop/products/Automatic-Hair-Curler-Auto-Hair-Curling-Iron-Ceramic-Rotating-Air-Curler20Air-Spin-Wand-Styler-Curl_2_1080x.jpg?v=1676652751",
   },
 ];
+
 
 export async function fetchSpacesEnabled() {
   await sleep(100);
