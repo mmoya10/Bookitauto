@@ -5,6 +5,7 @@ import useLocalStorage from "../../hooks/useLocalStorage";
 import { useAuth } from "../../hooks/useAuth";
 import { IcChevron, IcGrid, IcGear, IcClose, IcDoorOut } from "./Icons";
 import Select from "../../components/common/Select";
+import { motion, AnimatePresence } from "framer-motion";
 
 const glass =
   "border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
@@ -29,7 +30,7 @@ export default function Sidebar({
         "hidden md:flex sticky top-0 h-screen flex-col",
         glass,
         "transition-[width] duration-300",
-expanded ? "w-64" : "w-[80px]"
+        expanded ? "w-64" : "w-[80px]"
       )}
     >
       {/* Header / Logo */}
@@ -94,48 +95,57 @@ expanded ? "w-64" : "w-[80px]"
 
       {/* Nav */}
       <nav className="flex-1 px-2 mt-2 overflow-y-auto no-scrollbar">
-        <ul className="grid gap-1">
-          {menu.map(({ to, label, icon: Icon, end }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                end={end}
-                className={({ isActive }) =>
-                  clsx(
-                    "group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm text-slate-300",
-                    "hover:text-zinc-100 hover:bg-white/5",
-                    isActive && "text-white bg-white/10 ring-1 ring-white/10"
-                  )
-                }
-              >
-                <span className="grid size-6 place-items-center">
-                  <Icon />
-                </span>
-                <span
-                  className={clsx(
-                    "whitespace-nowrap transition-[opacity,transform,width] duration-200",
-                    expanded
-                      ? "opacity-100 translate-x-0 w-auto"
-                      : "opacity-0 -translate-x-2 w-0 overflow-hidden"
-                  )}
+        <AnimatePresence mode="wait">
+          <motion.ul
+            key={settingsMode ? "settings" : "main"}
+            className="grid gap-1"
+            initial={{ x: -50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 50, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+          >
+            {menu.map(({ to, label, icon: Icon, end }) => (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  end={end}
+                  className={({ isActive }) =>
+                    clsx(
+                      "group relative flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm text-slate-300",
+                      "hover:text-zinc-100 hover:bg-white/5",
+                      isActive && "text-white bg-white/10 ring-1 ring-white/10"
+                    )
+                  }
                 >
-                  {label}
-                </span>
-
-                {!expanded && (
+                  <span className="grid size-6 place-items-center">
+                    <Icon />
+                  </span>
                   <span
                     className={clsx(
-                      "pointer-events-none absolute left-[96px] z-10 rounded-md border border-white/10 bg-[#111827]/90 px-2 py-1 text-xs text-zinc-100 shadow-lg",
-                      "opacity-0 translate-x-[-6px] group-hover:opacity-100 group-hover:translate-x-0"
+                      "whitespace-nowrap transition-[opacity,transform,width] duration-200",
+                      expanded
+                        ? "opacity-100 translate-x-0 w-auto"
+                        : "opacity-0 -translate-x-2 w-0 overflow-hidden"
                     )}
                   >
                     {label}
                   </span>
-                )}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+
+                  {!expanded && (
+                    <span
+                      className={clsx(
+                        "pointer-events-none absolute left-[96px] z-10 rounded-md border border-white/10 bg-[#111827]/90 px-2 py-1 text-xs text-zinc-100 shadow-lg",
+                        "opacity-0 translate-x-[-6px] group-hover:opacity-100 group-hover:translate-x-0"
+                      )}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+          </motion.ul>
+        </AnimatePresence>
       </nav>
 
       {/* Footer */}

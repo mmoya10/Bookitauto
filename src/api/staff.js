@@ -8,7 +8,7 @@ let staff = [
     id: "st-1",
     name: "Marcos",
     description: "Especialista en corte clásico y degradados.",
-    imageUrl: "https://biondobarberia.com/wp-content/uploads/freshizer/657b1279bbd1317589f15242f94a61ca_barberia-hombres-barcelona-biondo-miguel-angel-2-263-320-c-90.jpg",
+    imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZWQ5MjliNGYwODE5MTlhZDdjNTdjYTM2MjkzNzI6ZmlsZV8wMDAwMDAwMGEyNzQ2MjQ2OThjOWU2Yjg4YzdmMDcyOCIsInRzIjoiNDg3ODU4IiwicCI6InB5aSIsInNpZyI6ImJkNjU0MzU1MDI3NmExYzhhMGUxNWVmNDYyZDg4NDQ3ZWZiZTVlOGQ4YmYzNmFkNTk1ZWExNGMwYjRlNTBhMDUiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
     calendarIds: ["cal-1", "cal-2"],
   },
   {

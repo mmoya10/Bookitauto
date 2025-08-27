@@ -65,39 +65,38 @@ export default function SelectableGallery({
           </Button>
           <div className="flex items-center gap-1">
             <button
-  type="button"
-  onClick={() => setViewSafe("cards")}
-  aria-label="Ver como tarjetas"
-  aria-pressed={view === "cards"}
-  className={clsx(
-    "inline-flex items-center justify-center rounded-lg p-2",
-    "border border-white/10 hover:bg-white/15 transition",
-    view === "cards"
-      ? "bg-violet-600 text-white border-violet-500"
-      : "bg-white/10 text-slate-300"
-  )}
-  title="Tarjetas"
->
-  <GalleryVertical className="w-5 h-5" />
-</button>
+              type="button"
+              onClick={() => setViewSafe("cards")}
+              aria-label="Ver como tarjetas"
+              aria-pressed={view === "cards"}
+              className={clsx(
+                "inline-flex items-center justify-center rounded-lg p-2",
+                "border border-white/10 hover:bg-white/15 transition",
+                view === "cards"
+                  ? "bg-violet-600 text-white border-violet-500"
+                  : "bg-white/10 text-slate-300"
+              )}
+              title="Tarjetas"
+            >
+              <GalleryVertical className="w-5 h-5" />
+            </button>
 
-<button
-  type="button"
-  onClick={() => setViewSafe("table")}
-  aria-label="Ver como tabla"
-  aria-pressed={view === "table"}
-  className={clsx(
-    "inline-flex items-center justify-center rounded-lg p-2",
-    "border border-white/10 hover:bg-white/15 transition",
-    view === "table"
-      ? "bg-violet-600 text-white border-violet-500"
-      : "bg-white/10 text-slate-300"
-  )}
-  title="Tabla"
->
-  <TableProperties className="w-5 h-5" />
-</button>
-
+            <button
+              type="button"
+              onClick={() => setViewSafe("table")}
+              aria-label="Ver como tabla"
+              aria-pressed={view === "table"}
+              className={clsx(
+                "inline-flex items-center justify-center rounded-lg p-2",
+                "border border-white/10 hover:bg-white/15 transition",
+                view === "table"
+                  ? "bg-violet-600 text-white border-violet-500"
+                  : "bg-white/10 text-slate-300"
+              )}
+              title="Tabla"
+            >
+              <TableProperties className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -223,7 +222,7 @@ function CardsView({ items, toCard, selected, toggleOne }) {
             className="overflow-hidden border rounded-2xl border-white/10 bg-white/5"
           >
             {/* Imagen arriba */}
-            <div className="relative w-full h-48">
+            <div className="relative w-full h-48 bg-white">
               <img
                 src={imageUrl}
                 alt=""

@@ -49,7 +49,7 @@ let products = [
     price: 19.9,
     salePrice: 16.9,
     cost: 4,
-    imageUrl: 'https://m.media-amazon.com/images/I/51lIEWIOL4L._UF1000,1000_QL80_.jpg',
+    imageUrl: 'https://gaiahairexperience.com/cdn/shop/files/Argan_Oil_Front_1.png?v=1720774124',
     createdAt: '2025-08-05T10:00:00Z',
   },
   {

@@ -11,6 +11,8 @@ import { mainMenu, settingsMenu } from "./menuConfig";
 import Sidebar from "./Sidebar";
 import TopbarMobile from "./TopbarMobile";
 import MobileDrawer from "./MobileDrawer";
+import ScrollToTop from "./ScrollToTop";
+
 
 export default function AppLayout() {
   const [settingsMode, setSettingsMode] = useState(false);
@@ -65,12 +67,14 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
 
       {/* Main */}
       <div className="min-w-0 flex-1">
-        <main className="p-6">
-          <Outlet />
-        </main>
+       <main className="p-6">
+  <ScrollToTop />
+  <Outlet />
+</main>
+
       </div>
 
-      {/* Drawer móvil */}
+      {/* Drawer móvil */} 
      <MobileDrawer
   open={mobileOpen}
 onClose={() => { setMobileOpen(false); setSettingsMode(false); }}  menu={menu}
