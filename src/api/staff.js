@@ -1,5 +1,9 @@
 // src/api/staff.js
 import { fetchCalendars, fetchAbsences } from "./calendars";
+import Staff1 from "../Images/Staff1.png";
+import Staff2 from "../Images/Staff2.png";
+import Staff3 from "../Images/Staff3.png";
+
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -8,43 +12,22 @@ let staff = [
     id: "st-1",
     name: "Marcos",
     description: "Especialista en corte clásico y degradados.",
-    imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZWQ5MjliNGYwODE5MTlhZDdjNTdjYTM2MjkzNzI6ZmlsZV8wMDAwMDAwMGEyNzQ2MjQ2OThjOWU2Yjg4YzdmMDcyOCIsInRzIjoiNDg3ODU4IiwicCI6InB5aSIsInNpZyI6ImJkNjU0MzU1MDI3NmExYzhhMGUxNWVmNDYyZDg4NDQ3ZWZiZTVlOGQ4YmYzNmFkNTk1ZWExNGMwYjRlNTBhMDUiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+    imageUrl: Staff1,
     calendarIds: ["cal-1", "cal-2"],
   },
   {
     id: "st-2",
     name: "Lucía",
     description: "Colorista creativa, balayage y mechas.",
-    imageUrl: "https://biondobarberia.com/wp-content/uploads/freshizer/657b1279bbd1317589f15242f94a61ca_barberia-hombres-barcelona-biondo-miguel-angel-2-263-320-c-90.jpg",
+    imageUrl: Staff2,
     calendarIds: ["cal-3"],
   },
   {
     id: "st-3",
     name: "Irene",
     description: "Cortes modernos y peinados de evento.",
-    imageUrl: "https://biondobarberia.com/wp-content/uploads/freshizer/657b1279bbd1317589f15242f94a61ca_barberia-hombres-barcelona-biondo-miguel-angel-2-263-320-c-90.jpg",
+    imageUrl: Staff3,
     calendarIds: ["cal-1"],
-  },
-  {
-    id: "st-4",
-    name: "David",
-    description: "Barbería premium, afeitado a navaja.",
-    imageUrl: "https://biondobarberia.com/wp-content/uploads/freshizer/657b1279bbd1317589f15242f94a61ca_barberia-hombres-barcelona-biondo-miguel-angel-2-263-320-c-90.jpg",
-    calendarIds: ["cal-2"],
-  },
-  {
-    id: "st-5",
-    name: "Sara",
-    description: "Tratamientos capilares y alisado.",
-    imageUrl: "https://biondobarberia.com/wp-content/uploads/freshizer/657b1279bbd1317589f15242f94a61ca_barberia-hombres-barcelona-biondo-miguel-angel-2-263-320-c-90.jpg",
-    calendarIds: ["cal-1", "cal-3"],
-  },
-  {
-    id: "st-6",
-    name: "Álvaro",
-    description: "Estilismo masculino y arreglos de barba.",
-    imageUrl: "https://biondobarberia.com/wp-content/uploads/freshizer/657b1279bbd1317589f15242f94a61ca_barberia-hombres-barcelona-biondo-miguel-angel-2-263-320-c-90.jpg",
-    calendarIds: ["cal-2"],
   },
 ];
 

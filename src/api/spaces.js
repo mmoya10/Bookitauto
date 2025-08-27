@@ -15,7 +15,7 @@ let spaces = [
     name: "Sala",
     description: "Espacio privado para tratamientos individuales.",
     capacity: 4,
-    imageUrl: "https://cncentrosdenegocios.com/wp-content/uploads/2024/04/Sala-Premium-1.jpg",
+    imageUrl: "https://www.clinicaraquelgomez.com/wp-content/uploads/2016/12/sala-tratamiento-dentista-burgos.jpg",
   },
   {
     id: "sp-3",

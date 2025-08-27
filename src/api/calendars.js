@@ -1,5 +1,8 @@
 // src/api/calendars.js
 // Mock unificado: catálogos (categorías/calendarios/staff/sites) + citas/ausencias
+import Staff1 from "../Images/Staff1.png";
+import Staff2 from "../Images/Staff2.png";
+import Staff3 from "../Images/Staff3.png";
 
 const delay = (ms = 200) => new Promise((r) => setTimeout(r, ms));
 const rid = () => Math.random().toString(36).slice(2, 10);
@@ -16,21 +19,21 @@ let memStaff = [
   {
     id: "stf_1",
     name: "Laura",
-    imageUrl: "https://placehold.co/200x140?text=Laura",
+    imageUrl: Staff1,
     bio: "Especialista en color y tratamientos.",
     color: "#820096",
   },
   {
     id: "stf_2",
     name: "Carlos",
-    imageUrl: "https://placehold.co/200x140?text=Carlos",
+    imageUrl: Staff2,
     bio: "Cortes modernos y barbería.",
     color: "#965F00",
   },
   {
     id: "stf_3",
     name: "Julia",
-    imageUrl: "https://placehold.co/200x140?text=Julia",
+    imageUrl: Staff3,
     bio: "Spa y cuidado facial.",
     color: "#000D96",
   },
@@ -109,7 +112,8 @@ let memCalendars = [
     type: "main",
     name: "Coloración Raíz",
     description: "Color solo en raíz",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Color+Raiz&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Color+Raiz&font=montserrat",
     categoryId: "cat_color",
     price: 39.9,
     duration: 60,
@@ -124,7 +128,8 @@ let memCalendars = [
     type: "main",
     name: "Color Completo",
     description: "Color uniforme en todo el cabello",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Color+Completo&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Color+Completo&font=montserrat",
     categoryId: "cat_color",
     price: 54.9,
     duration: 90,
@@ -135,65 +140,71 @@ let memCalendars = [
     status: "active",
   },
   {
-  id: "cal_color_3",
-  type: "main",
-  name: "Mechas Babylights",
-  description: "Mechas finas y naturales",
-  imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Mechas+Babylights&font=montserrat",
-  categoryId: "cat_color",
-  price: 89.0,
-  duration: 120,
-  bufferBefore: 10,
-  bufferAfter: 10,
-  extrasSupported: ["cal_extra_3"],
-  staffIds: ["stf_2"],
-  status: "active",
-  // ⬇️ NUEVO
-  options: [
-    {
-      id: "opt_mb_short",
-      name: "Pelo corto",
-      description: "Por encima de los hombros",
-      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwMzg0NjQwODE5MWFjNTcwZjI4M2VlMGM1MTY6ZmlsZV8wMDAwMDAwMGMyMGM2MWY0ODE3YjNjYWNmMGUxN2M5NyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjUxOWE1ZWUzMmQ4OWViOGUwMjAyNTdjMTYyOTE4NWFmM2UxMTdjNjMzMWI0NWU2MThhYjJmNmEyMGJhN2U3N2IiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
-      price: 0,           // opcional: si no pones, se asume 0
-      duration: 0,        // opcional: si no pones, se asume 0
-      status: "active"
-    },
-    {
-      id: "opt_mb_medium",
-      name: "Pelo medio",
-      description: "Hasta los hombros",
-      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwY2I0YTUwODE5MTg0Yjg1YWNhMTE0Zjc2NTI6ZmlsZV8wMDAwMDAwMDlhOGM2MWY2YWI3OTgwNGU4NzkyZjFlNiIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjQ0ZTUzODYzMmMxMmRiOTgyZGY2Y2VlMTU0NTgxODZiMGMyMWVmMDA1MTI3ZTIwMDQ1ZmY4YzY3ZTljNmQwNjkiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
-      price: 10,          // suplemento
-      duration: 15,       // +15 min
-      status: "active"
-    },
-    {
-      id: "opt_mb_long",
-      name: "Pelo largo",
-      description: "Por debajo de los hombros",
-      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwOTEyMjA4ODE5MWFhYjdjYzQ5MTk1MGUzYzc6ZmlsZV8wMDAwMDAwMGYyNmM2MjMwYmQ4ODU1NzMwMDc3Y2JhNyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjRhOGY3NTBjYjBmYjJjYjFmYmUwYzFiYTY5MGJiMzJhMjUxN2FlNDRmMzQxNThkYjRkZmQ4N2ExMTkyMTE1NTMiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
-      price: 20,          // suplemento
-      duration: 30,       // +30 min
-      status: "active"
-    },
-    {
-      id: "opt_mb_very_long",
-      name: "Pelo muy largo",
-      description: "Por la cintura",
-      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIxMGEyMDA4ODE5MWEzNDcwODIyYWM0Nzc4ODE6ZmlsZV8wMDAwMDAwMGU0ZTg2MWY0YmM0ZDE0ZmM0NWM4MTZiNyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjhhNWZhOTMzMGVjZmZjYWQ5NzJkYzEwZTVlYWI2NGZmYTk4NGRmNzBhODMwNzI1MzRlYzFjYjU1NmUwMmFlYzYiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
-      price: 20,          // suplemento
-      duration: 45,       // +30 min
-      status: "active"
-    }
-  ]
-},
+    id: "cal_color_3",
+    type: "main",
+    name: "Mechas Babylights",
+    description: "Mechas finas y naturales",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Mechas+Babylights&font=montserrat",
+    categoryId: "cat_color",
+    price: 89.0,
+    duration: 120,
+    bufferBefore: 10,
+    bufferAfter: 10,
+    extrasSupported: ["cal_extra_3"],
+    staffIds: ["stf_2"],
+    status: "active",
+    // ⬇️ NUEVO
+    options: [
+      {
+        id: "opt_mb_short",
+        name: "Pelo corto",
+        description: "Por encima de los hombros",
+        imageUrl:
+          "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwMzg0NjQwODE5MWFjNTcwZjI4M2VlMGM1MTY6ZmlsZV8wMDAwMDAwMGMyMGM2MWY0ODE3YjNjYWNmMGUxN2M5NyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjUxOWE1ZWUzMmQ4OWViOGUwMjAyNTdjMTYyOTE4NWFmM2UxMTdjNjMzMWI0NWU2MThhYjJmNmEyMGJhN2U3N2IiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+        price: 0, // opcional: si no pones, se asume 0
+        duration: 0, // opcional: si no pones, se asume 0
+        status: "active",
+      },
+      {
+        id: "opt_mb_medium",
+        name: "Pelo medio",
+        description: "Hasta los hombros",
+        imageUrl:
+          "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwY2I0YTUwODE5MTg0Yjg1YWNhMTE0Zjc2NTI6ZmlsZV8wMDAwMDAwMDlhOGM2MWY2YWI3OTgwNGU4NzkyZjFlNiIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjQ0ZTUzODYzMmMxMmRiOTgyZGY2Y2VlMTU0NTgxODZiMGMyMWVmMDA1MTI3ZTIwMDQ1ZmY4YzY3ZTljNmQwNjkiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+        price: 10, // suplemento
+        duration: 15, // +15 min
+        status: "active",
+      },
+      {
+        id: "opt_mb_long",
+        name: "Pelo largo",
+        description: "Por debajo de los hombros",
+        imageUrl:
+          "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwOTEyMjA4ODE5MWFhYjdjYzQ5MTk1MGUzYzc6ZmlsZV8wMDAwMDAwMGYyNmM2MjMwYmQ4ODU1NzMwMDc3Y2JhNyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjRhOGY3NTBjYjBmYjJjYjFmYmUwYzFiYTY5MGJiMzJhMjUxN2FlNDRmMzQxNThkYjRkZmQ4N2ExMTkyMTE1NTMiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+        price: 20, // suplemento
+        duration: 30, // +30 min
+        status: "active",
+      },
+      {
+        id: "opt_mb_very_long",
+        name: "Pelo muy largo",
+        description: "Por la cintura",
+        imageUrl:
+          "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIxMGEyMDA4ODE5MWEzNDcwODIyYWM0Nzc4ODE6ZmlsZV8wMDAwMDAwMGU0ZTg2MWY0YmM0ZDE0ZmM0NWM4MTZiNyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjhhNWZhOTMzMGVjZmZjYWQ5NzJkYzEwZTVlYWI2NGZmYTk4NGRmNzBhODMwNzI1MzRlYzFjYjU1NmUwMmFlYzYiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+        price: 20, // suplemento
+        duration: 45, // +30 min
+        status: "active",
+      },
+    ],
+  },
   {
     id: "cal_color_4",
     type: "main",
     name: "Balayage",
     description: "Degradado natural",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Balayage&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Balayage&font=montserrat",
     categoryId: "cat_color",
     price: 99.0,
     duration: 150,
@@ -210,7 +221,8 @@ let memCalendars = [
     type: "main",
     name: "Masaje Relajante",
     description: "Masaje de cuerpo completo",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Masaje+Relajante&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Masaje+Relajante&font=montserrat",
     categoryId: "cat_spa",
     price: 49.9,
     duration: 60,
@@ -225,7 +237,8 @@ let memCalendars = [
     type: "main",
     name: "Masaje Descontracturante",
     description: "Masaje terapéutico",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Masaje+Descontracturante&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Masaje+Descontracturante&font=montserrat",
     categoryId: "cat_spa",
     price: 59.9,
     duration: 70,
@@ -240,7 +253,8 @@ let memCalendars = [
     type: "main",
     name: "Tratamiento Facial",
     description: "Limpieza profunda e hidratación",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Tratamiento+Facial&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Tratamiento+Facial&font=montserrat",
     categoryId: "cat_spa",
     price: 39.9,
     duration: 50,
@@ -255,7 +269,8 @@ let memCalendars = [
     type: "main",
     name: "Circuito Spa",
     description: "Sauna + jacuzzi + ducha sensorial",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Circuito+Spa&font=montserrat",
+    imageUrl:
+      "https://placehold.co/640x360/ffffff/000000?text=Circuito+Spa&font=montserrat",
     categoryId: "cat_spa",
     price: 69.9,
     duration: 120,
@@ -316,8 +331,6 @@ let memCalendars = [
     status: "active",
   },
 ];
-
-
 
 /* ============ Horario negocio / festivos (compat) ============ */
 
@@ -500,15 +513,17 @@ function genWeekCitas() {
         const main = chooseOne(mains);
 
         // --- NUEVO: opción del calendario (si existe)
-        const opts = Array.isArray(main.options) ? main.options.filter(o => o?.status !== "inactive") : [];
+        const opts = Array.isArray(main.options)
+          ? main.options.filter((o) => o?.status !== "inactive")
+          : [];
         const pickedOpt = opts.length ? chooseOne(opts) : null;
         const optionId = pickedOpt?.id || null;
 
         // Duración con opción (clamp a MIN..MAX)
         const baseDur = Number(main.duration || 30);
-        const optDur  = optionId ? optionDuration(main.id, optionId) : 0;
-        const durRaw  = baseDur + optDur;
-        const dur     = Math.max(MIN_APT_MIN, Math.min(MAX_APT_MIN, durRaw));
+        const optDur = optionId ? optionDuration(main.id, optionId) : 0;
+        const durRaw = baseDur + optDur;
+        const dur = Math.max(MIN_APT_MIN, Math.min(MAX_APT_MIN, durRaw));
 
         if (minute + dur > sp.e) break;
 
@@ -527,26 +542,30 @@ function genWeekCitas() {
         }
 
         // Precio total = main + opción + extras
-        const priceMain   = Number(calMap.get(main.id)?.price || 0);
+        const priceMain = Number(calMap.get(main.id)?.price || 0);
         const priceOption = optionId ? optionPrice(main.id, optionId) : 0;
         const priceExtras = sumExtrasPrice(extraIds, calMap);
-        const totalPrice  = +(priceMain + priceOption + priceExtras).toFixed(2);
+        const totalPrice = +(priceMain + priceOption + priceExtras).toFixed(2);
 
         const start = iso(day, Math.floor(minute / 60), minute % 60);
         const endMin = minute + dur;
         const end = iso(day, Math.floor(endMin / 60), endMin % 60);
 
         if (!isWithinBusinessHours(start, end)) {
-          minute += 15; continue;
+          minute += 15;
+          continue;
         }
         if (hasStaffConflictLocal(staffId, start, end)) {
-          minute += 15; continue;
+          minute += 15;
+          continue;
         }
 
         const now = new Date();
         const isPast = new Date(end) <= now;
 
-        let status, payment, tiendapago = null;
+        let status,
+          payment,
+          tiendapago = null;
         if (isPast) {
           status = Math.random() < 0.5 ? "completado" : "no_presentado";
           payment = Math.random() < 0.5 ? "online" : "tienda";
@@ -572,7 +591,7 @@ function genWeekCitas() {
           },
           staffId,
           calendarId: main.id,
-          optionId,            // ⬅️ NUEVO
+          optionId, // ⬅️ NUEVO
           extraIds,
           totalPrice,
           start,
@@ -589,8 +608,13 @@ function genWeekCitas() {
           const otherStaff = activeStaff.filter((s) => s !== staffId);
           if (otherStaff.length) {
             const s2 = chooseOne(otherStaff);
-            if (isWithinBusinessHours(start, end) && !hasStaffConflictLocal(s2, start, end)) {
-              let st2 = status, pay2 = payment, tienda2 = tiendapago;
+            if (
+              isWithinBusinessHours(start, end) &&
+              !hasStaffConflictLocal(s2, start, end)
+            ) {
+              let st2 = status,
+                pay2 = payment,
+                tienda2 = tiendapago;
               if (isPast) {
                 st2 = Math.random() < 0.5 ? "completado" : "no_presentado";
                 pay2 = Math.random() < 0.5 ? "online" : "tienda";
@@ -617,7 +641,7 @@ function genWeekCitas() {
                 },
                 staffId: s2,
                 calendarId: main.id,
-                optionId,        // ⬅️ NUEVO (misma opción)
+                optionId, // ⬅️ NUEVO (misma opción)
                 extraIds,
                 totalPrice,
                 start,
@@ -639,7 +663,6 @@ function genWeekCitas() {
 
   return out;
 }
-
 
 let memAppointments = genWeekCitas();
 
@@ -774,7 +797,6 @@ export async function deleteCalendars(ids) {
   return { ok: true };
 }
 
-
 /* ================== Horas/ Festivos (compat) ================= */
 
 export async function fetchBusinessHours() {
@@ -843,13 +865,19 @@ export async function createAppointment(payload) {
 
   const dur = durationMinutes(start, end);
   if (dur < MIN_APT_MIN || dur > MAX_APT_MIN) {
-    throw new Error(`La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`);
+    throw new Error(
+      `La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`
+    );
   }
   if (!isWithinBusinessHours(start, end)) {
-    throw new Error("La cita no puede estar fuera del horario laboral del negocio.");
+    throw new Error(
+      "La cita no puede estar fuera del horario laboral del negocio."
+    );
   }
   if (payload.staffId && hasStaffConflict(payload.staffId, start, end)) {
-    throw new Error("El staff seleccionado ya tiene otra cita/ausencia en ese intervalo.");
+    throw new Error(
+      "El staff seleccionado ya tiene otra cita/ausencia en ese intervalo."
+    );
   }
 
   const id = rid();
@@ -858,7 +886,7 @@ export async function createAppointment(payload) {
     user: payload.user ?? null,
     staffId: payload.staffId ?? null,
     calendarId: payload.calendarId ?? null,
-    optionId: payload.optionId ?? null,              // ⬅️ NUEVO
+    optionId: payload.optionId ?? null, // ⬅️ NUEVO
     extraIds: Array.isArray(payload.extraIds) ? payload.extraIds : [],
     start,
     end,
@@ -874,9 +902,11 @@ export async function createAppointment(payload) {
   let total = payload.totalPrice;
   if (total == null) {
     const main = memCalendars.find((c) => c.id === base.calendarId);
-    const priceMain   = Number(main?.price || 0);
-    const priceOption = base.optionId ? optionPrice(base.calendarId, base.optionId) : 0;
-    let priceExtras   = 0;
+    const priceMain = Number(main?.price || 0);
+    const priceOption = base.optionId
+      ? optionPrice(base.calendarId, base.optionId)
+      : 0;
+    let priceExtras = 0;
     for (const exId of base.extraIds) {
       const ex = memCalendars.find((c) => c.id === exId);
       priceExtras += Number(ex?.price || 0);
@@ -888,7 +918,6 @@ export async function createAppointment(payload) {
   memAppointments.push(base);
   return structuredClone(base);
 }
-
 
 // Solo mover fechas
 export async function updateAppointmentDates({ id, start, end }) {
@@ -937,21 +966,31 @@ export async function updateAppointment(payload) {
   if (payload.start != null || payload.end != null || payload.staffId != null) {
     const dur = durationMinutes(nextStart, nextEnd);
     if (dur < MIN_APT_MIN || dur > MAX_APT_MIN) {
-      throw new Error(`La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`);
+      throw new Error(
+        `La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`
+      );
     }
     if (!isWithinBusinessHours(nextStart, nextEnd)) {
-      throw new Error("La cita no puede estar fuera del horario laboral del negocio.");
+      throw new Error(
+        "La cita no puede estar fuera del horario laboral del negocio."
+      );
     }
     if (nextStaff && hasStaffConflict(nextStaff, nextStart, nextEnd, prev.id)) {
-      throw new Error("El staff seleccionado ya tiene otra cita/ausencia en ese intervalo.");
+      throw new Error(
+        "El staff seleccionado ya tiene otra cita/ausencia en ese intervalo."
+      );
     }
   }
 
   let nextTotal = payload.totalPrice ?? prev.totalPrice;
-  if (payload.calendarId != null || payload.extraIds != null || payload.optionId != null) {
-    const calId    = payload.calendarId ?? prev.calendarId;
+  if (
+    payload.calendarId != null ||
+    payload.extraIds != null ||
+    payload.optionId != null
+  ) {
+    const calId = payload.calendarId ?? prev.calendarId;
     const extraIds = payload.extraIds ?? prev.extraIds;
-    const optId    = payload.optionId ?? prev.optionId;
+    const optId = payload.optionId ?? prev.optionId;
 
     const main = memCalendars.find((c) => c.id === calId);
     let tot = Number(main?.price || 0);
@@ -971,11 +1010,11 @@ export async function updateAppointment(payload) {
     staffId: nextStaff,
     totalPrice: +Number(nextTotal).toFixed(2),
     tiendapago: payload.tiendapago ?? prev.tiendapago ?? null,
-    propina: payload.propina != null ? Number(payload.propina) : prev.propina ?? 0,
+    propina:
+      payload.propina != null ? Number(payload.propina) : prev.propina ?? 0,
   };
   return structuredClone(memAppointments[i]);
 }
-
 
 export async function deleteAppointment(id) {
   await delay(80);
