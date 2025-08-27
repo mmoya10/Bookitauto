@@ -304,11 +304,7 @@ export default function CalendarsPage() {
       }
 
       // staffMode -> apagar una vez si no es vista de día
-      if (
-        staffMode &&
-        vt !== "timeGridDay" &&
-        vt !== "resourceTimeGridDay"
-      ) {
+      if (staffMode && vt !== "timeGridDay" && vt !== "resourceTimeGridDay") {
         setStaffMode(false);
       }
     },
@@ -326,30 +322,23 @@ export default function CalendarsPage() {
       </header>
 
       {/* ======= Filtros ======= */}
-      <section
-        className={clsx(
-          glassCard,
-          "p-4 relative",
-          filtersOpen ? "z-10" : "z-0"
-        )}
-      >
-        <CalendarFilters
-          calendars={calendars}
-          categories={categories}
-          staff={staff}
-          selectedCalendars={selectedCalendars}
-          setSelectedCalendars={setSelectedCalendars}
-          selectedCategories={selectedCategories}
-          setSelectedCategories={setSelectedCategories}
-          selectedStaff={selectedStaff}
-          setSelectedStaff={setSelectedStaff}
-          estado={estado}
-          setEstado={setEstado}
-          filtersOpen={filtersOpen}
-          setFiltersOpen={setFiltersOpen}
-          onClear={clearFilters}
-        />
-      </section>
+
+      <CalendarFilters
+        calendars={calendars}
+        categories={categories}
+        staff={staff}
+        selectedCalendars={selectedCalendars}
+        setSelectedCalendars={setSelectedCalendars}
+        selectedCategories={selectedCategories}
+        setSelectedCategories={setSelectedCategories}
+        selectedStaff={selectedStaff}
+        setSelectedStaff={setSelectedStaff}
+        estado={estado}
+        setEstado={setEstado}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
+        onClear={clearFilters}
+      />
 
       {/* ======= Acciones ======= */}
       <CalendarActions
@@ -509,9 +498,24 @@ function ActionDialog({ onClose, onEdit, onResolve }) {
       <div className="rounded-xl bg-zinc-900 border border-white/10 p-4 w-[280px]">
         <div className="text-sm font-semibold mb-3">¿Qué quieres hacer?</div>
         <div className="grid gap-2">
-          <button className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/15 text-sm" onClick={onEdit}>Editar</button>
-          <button className="px-3 py-2 rounded-md bg-violet-600/80 hover:bg-violet-600 text-sm" onClick={onResolve}>Resolver</button>
-          <button className="px-3 py-2 rounded-md hover:bg-white/10 text-sm" onClick={onClose}>Cancelar</button>
+          <button
+            className="px-3 py-2 rounded-md bg-white/10 hover:bg-white/15 text-sm"
+            onClick={onEdit}
+          >
+            Editar
+          </button>
+          <button
+            className="px-3 py-2 rounded-md bg-violet-600/80 hover:bg-violet-600 text-sm"
+            onClick={onResolve}
+          >
+            Resolver
+          </button>
+          <button
+            className="px-3 py-2 rounded-md hover:bg-white/10 text-sm"
+            onClick={onClose}
+          >
+            Cancelar
+          </button>
         </div>
       </div>
     </div>

@@ -6,12 +6,14 @@ import clsx from "clsx";
 import Button from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import { fetchBusiness, fetchBranches } from "../../api/business";
-import { fetchCalendars, fetchCategories, fetchStaff, fetchBookingSites, updateBookingSite, createCalendar, updateCalendar, deleteCalendars, setActiveBookingSite, deleteBookingSite } from "../../api/calendars";
-
+import {
+  fetchCalendars,
+  fetchCategories,
+  fetchStaff,
+} from "../../api/calendars";
 
 const glass =
   "rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
-
 const cardGlass =
   "border border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition";
 
@@ -24,63 +26,96 @@ const slug = (s = "") =>
     .replace(/(^-|-$)/g, "");
 
 export default function BookingSitePublic() {
-  const { branchSlug, siteSlug } = useParams();
+  // ya no usamos siteSlug
+  const { bizSlug, branchSlug } = useParams();
 
   // Confirmación
-const [confirm, setConfirm] = useState(null); // { name, dateText, timeText, mapsQuery }
-
-function fmtDateLong(d) {
-  try {
-    return d.toLocaleDateString("es-ES", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
-  } catch {
-    return d?.toLocaleDateString?.() || "";
-  }
-}
-
+  const [confirm, setConfirm] = useState(null); // { name, dateText, timeText, mapsQuery }
+  const fmtDateLong = (d) => {
+    try {
+      return d.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+    } catch {
+      return d?.toLocaleDateString?.() || "";
+    }
+  };
 
   // Datos base
-  const { data: business } = useQuery({ queryKey: ["biz"], queryFn: fetchBusiness });
-  const { data: branches } = useQuery({
+  const { data: business } = useQuery({
+    queryKey: ["biz"],
+    queryFn: fetchBusiness,
+  });
+  const { data: branches = [] } = useQuery({
     queryKey: ["branches"],
     queryFn: fetchBranches,
     enabled: !!business,
   });
-  const { data: sites = [] } = useQuery({ queryKey: ["bsites"], queryFn: fetchBookingSites });
-  const { data: categories = [] } = useQuery({ queryKey: ["cats"], queryFn: fetchCategories });
-  const { data: staff = [] } = useQuery({ queryKey: ["staff"], queryFn: fetchStaff });
+  const { data: categories = [] } = useQuery({
+    queryKey: ["cats"],
+    queryFn: fetchCategories,
+  });
+  const { data: staff = [] } = useQuery({
+    queryKey: ["staff"],
+    queryFn: fetchStaff,
+  });
 
-  // Resolver context por slug
-  const currentSite = useMemo(
-    () => sites.find((s) => slug(s.name) === siteSlug),
-    [sites, siteSlug]
-  );
+  // Resolver sucursal por slug (si branchMode)
   const currentBranch = useMemo(
-    () => (branches ?? []).find((b) => slug(b.nombre) === branchSlug),
+    () => branches.find((b) => slug(b.nombre) === branchSlug),
     [branches, branchSlug]
   );
-  const okContext = !!(business && currentSite && (!business.branchMode || currentBranch));
+  const okContext = !!(business && (!business.branchMode || currentBranch));
 
-  // Calendars visibles por booking site
+  // Calendarios activos (sin booking sites)
   const { data: allCals = [] } = useQuery({
-    queryKey: ["pub-cals", currentSite?.id],
-    queryFn: () => fetchCalendars({ calendarIds: currentSite?.calendarIds ?? [] }),
-    enabled: !!currentSite?.id,
+    queryKey: ["pub-cals-all"],
+    queryFn: () => fetchCalendars({}), // trae todos y filtramos aquí
   });
-  const mainCalendars = allCals.filter((c) => c.type === "main");
-  const extraCalendars = allCals.filter((c) => c.type === "extra");
+
+  const activeCals = useMemo(
+    () => allCals.filter((c) => c.status === "active"),
+    [allCals]
+  );
+  const mainCalendars = activeCals.filter((c) => c.type === "main");
+  const extraCalendars = activeCals.filter((c) => c.type === "extra");
 
   // Wizard
   const [step, setStep] = useState(1); // 1..4
 
-  // Paso 1: servicio principal + extras (en modal)
+  // Paso 1: principal + extras
   const [mainId, setMainId] = useState("");
   const selectedMain = mainCalendars.find((c) => c.id === mainId) || null;
-  const [extraIds, setExtraIds] = useState([]); // array de ids (string)
+  const [extraIds, setExtraIds] = useState([]);
   const [extrasModal, setExtrasModal] = useState(null); // { main, chosen:Set<string> } | null
+  // Opción seleccionada (si el calendario tiene options)
+  const [optionId, setOptionId] = useState(null);
+  // Modal de opciones: { main } | null
+  const [optionModal, setOptionModal] = useState(null);
+
+  // Opciones disponibles del main actual o del que esté en modal
+  const optionOpts = useMemo(() => {
+    const base = optionModal?.main || selectedMain;
+    if (!base || !Array.isArray(base.options)) return [];
+    return base.options
+      .filter((o) => o.status !== "inactive")
+      .map((o) => ({
+        id: o.id,
+        name: o.name,
+        description: o.description || "",
+        price: o.price ?? 0,
+        duration: o.duration ?? 0,
+        imageUrl: o.imageUrl || "",
+      }));
+  }, [optionModal, selectedMain]);
+
+  // Helper para obtener la opción seleccionada (cuando ya hay main elegido)
+  const selectedOption = useMemo(() => {
+    if (!selectedMain || !Array.isArray(selectedMain.options)) return null;
+    return selectedMain.options.find((o) => o.id === optionId) || null;
+  }, [selectedMain, optionId]);
 
   const supportedExtras = useMemo(() => {
     const base = extrasModal?.main || selectedMain;
@@ -89,12 +124,20 @@ function fmtDateLong(d) {
     return extraCalendars.filter((e) => ids.includes(e.id));
   }, [extrasModal, selectedMain, extraCalendars]);
 
-  // Totales (precio/duración)
+  // Totales
   const { totalPrice, totalDuration } = useMemo(() => {
-    let base = Number(selectedMain?.price || 0);
-    const offer = selectedMain?.offerPrice != null ? Number(selectedMain.offerPrice) : null;
-    let price = offer != null ? offer : base;
+    let price = Number(selectedMain?.price || 0);
     let dur = Number(selectedMain?.duration || 0);
+
+    // opción (si hay)
+    if (selectedOption) {
+      if (selectedOption.price != null)
+        price += Number(selectedOption.price || 0);
+      if (selectedOption.duration != null)
+        dur += Number(selectedOption.duration || 0);
+    }
+
+    // extras
     for (const id of extraIds) {
       const ex = extraCalendars.find((e) => e.id === id);
       if (!ex) continue;
@@ -102,9 +145,9 @@ function fmtDateLong(d) {
       if (ex.duration != null) dur += Number(ex.duration || 0);
     }
     return { totalPrice: price, totalDuration: dur };
-  }, [selectedMain, extraIds, extraCalendars]);
+  }, [selectedMain, selectedOption, extraIds, extraCalendars]);
 
-  // Paso 2: profesional (tarjetas)
+  // Paso 2: profesional
   const staffOptions = useMemo(() => {
     if (!selectedMain) return [];
     const ids = selectedMain.staffIds || [];
@@ -112,40 +155,40 @@ function fmtDateLong(d) {
   }, [selectedMain, staff]);
   const [staffChoice, setStaffChoice] = useState("random"); // "random" | staffId
 
-  // Paso 3: fecha y hora (disponibilidad demo)
+  // Paso 3: fecha y hora (demo)
   const [monthBase, setMonthBase] = useState(() => new Date());
-  const [selectedDay, setSelectedDay] = useState(null); // Date | null
+  const [selectedDay, setSelectedDay] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState("");
 
-  function daysOfMonth(baseDate) {
-    const d = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const daysOfMonth = (base) => {
+    const d = new Date(base.getFullYear(), base.getMonth(), 1);
     const res = [];
-    while (d.getMonth() === baseDate.getMonth()) {
+    while (d.getMonth() === base.getMonth()) {
       res.push(new Date(d));
       d.setDate(d.getDate() + 1);
     }
     return res;
-  }
+  };
   const monthlyDays = daysOfMonth(monthBase);
 
-  function generateSlots(date) {
+  const generateSlots = (date) => {
     if (!selectedMain) return [];
     const weekday = date.getDay(); // 0 D
     if (weekday === 0) return [];
     const slots = [];
-    for (let h = 10; h < 18; h++) {
-      for (const m of [0, 30]) {
-        slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-      }
-    }
+    for (let h = 10; h < 18; h++)
+      for (const m of [0, 30])
+        slots.push(
+          `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+        );
     return slots;
-  }
-  const availableSlots = useMemo(() => {
-    if (!selectedDay) return [];
-    return generateSlots(selectedDay);
-  }, [selectedDay]); // eslint-disable-line
+  };
+  const availableSlots = useMemo(
+    () => (selectedDay ? generateSlots(selectedDay) : []),
+    [selectedDay] // eslint-disable-line
+  );
 
-  // Paso 4: datos cliente
+  // Paso 4: datos
   const [form, setForm] = useState({
     nombre: "",
     apellidos: "",
@@ -154,10 +197,14 @@ function fmtDateLong(d) {
     acepta: true,
   });
 
-  // Validaciones por paso
+  // Validaciones
   const stepValid = useMemo(() => {
     if (step === 1) return !!selectedMain;
-    if (step === 2) return !!(staffChoice === "random" || staffOptions.find((s) => s.id === staffChoice));
+    if (step === 2)
+      return !!(
+        staffChoice === "random" ||
+        staffOptions.find((s) => s.id === staffChoice)
+      );
     if (step === 3) return !!(selectedDay && selectedSlot);
     if (step === 4) {
       const okName = form.nombre.trim() && form.apellidos.trim();
@@ -166,43 +213,39 @@ function fmtDateLong(d) {
       return okName && okEmail && okPhone && form.acepta;
     }
     return false;
-  }, [step, selectedMain, staffChoice, staffOptions, selectedDay, selectedSlot, form]);
+  }, [
+    step,
+    selectedMain,
+    staffChoice,
+    staffOptions,
+    selectedDay,
+    selectedSlot,
+    form,
+  ]);
 
-  function goNext() {
-    if (!stepValid) return;
-    setStep((s) => Math.min(4, s + 1));
-  }
-  function goPrev() {
-    setStep((s) => Math.max(1, s - 1));
-  }
+  const goNext = () => stepValid && setStep((s) => Math.min(4, s + 1));
+  const goPrev = () => setStep((s) => Math.max(1, s - 1));
 
   // Confirmar (demo)
   function reservar() {
-  if (!stepValid) return;
-
-  const dateText = selectedDay ? fmtDateLong(selectedDay) : "";
-  const timeText = selectedSlot || "";
-  const personName = form?.nombre?.trim() ? form.nombre.trim() : "cliente";
-
-  // Query para Google Maps: sucursal si existe, si no el negocio
-  const mapsQuery = business?.branchMode && currentBranch?.nombre
-    ? `${business?.nombre || ""} ${currentBranch?.nombre || ""}`
-    : business?.nombre || currentSite?.name || "Ubicación";
-
-  setConfirm({
-    name: personName,
-    dateText,
-    timeText,
-    mapsQuery,
-  });
-}
-
+    if (!stepValid) return;
+    const dateText = selectedDay ? fmtDateLong(selectedDay) : "";
+    const timeText = selectedSlot || "";
+    const personName = form?.nombre?.trim() ? form.nombre.trim() : "cliente";
+    const mapsQuery =
+      business?.branchMode && currentBranch?.nombre
+        ? `${business?.nombre || ""} ${currentBranch?.nombre || ""}`
+        : business?.nombre || "Ubicación";
+    setConfirm({ name: personName, dateText, timeText, mapsQuery });
+  }
 
   if (!okContext) {
     return (
       <div className="p-4 text-zinc-100">
         <div className={clsx(glass, "p-4")}>
-          <div className="text-sm">No se pudo cargar el booking solicitado.</div>
+          <div className="text-sm">
+            No se pudo cargar el booking solicitado.
+          </div>
           <Link className="underline text-cyan-200" to="/">
             Volver
           </Link>
@@ -212,167 +255,226 @@ function fmtDateLong(d) {
   }
 
   return (
-  <div
-    className={clsx(
-      "relative p-4 space-y-5 pb-28 text-zinc-100 min-h-screen",
-      "bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.20),transparent_40%),radial-gradient(1200px_600px_at_90%_90%,rgba(34,211,238,0.20),transparent_40%),linear-gradient(120deg,#0f172a,#1e293b)]"
-    )}
-  >
-    {confirm ? (
-      <ConfirmationScreen
-        confirm={confirm}
-        onClose={() => {
-          setConfirm(null);
-          // Reset básico del flujo (opcional)
-          setStep(1);
-          setMainId("");
-          setExtraIds([]);
-          setSelectedDay(null);
-          setSelectedSlot("");
-          setStaffChoice("random");
-        }}
-      />
-    ) : (
-      <>
-        {/* Encabezado */}
-        <header className="space-y-1">
-          <h1 className="text-xl font-semibold">
-            {business?.nombre}
-            {business?.branchMode && currentBranch ? ` — ${currentBranch.nombre}` : ""}
-          </h1>
-          <div className="text-sm text-slate-300">{currentSite?.name}</div>
-        </header>
+    <div
+      className={clsx(
+        "relative p-4 space-y-5 pb-28 text-zinc-100 min-h-screen",
+        "bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.20),transparent_40%),radial-gradient(1200px_600px_at_90%_90%,rgba(34,211,238,0.20),transparent_40%),linear-gradient(120deg,#0f172a,#1e293b)]"
+      )}
+    >
+      {confirm ? (
+        <ConfirmationScreen
+          confirm={confirm}
+          onClose={() => {
+            setConfirm(null);
+            setStep(1);
+            setMainId("");
+            setExtraIds([]);
+            setSelectedDay(null);
+            setSelectedSlot("");
+            setStaffChoice("random");
+          }}
+        />
+      ) : (
+        <>
+          {/* Encabezado */}
+          <header className="space-y-1">
+            <h1 className="text-xl font-semibold">
+              {business?.nombre}
+              {business?.branchMode && currentBranch
+                ? ` — ${currentBranch.nombre}`
+                : ""}
+            </h1>
+            {/* ya no mostramos nombre de site */}
+          </header>
 
-        {/* Paso 1 */}
-        {step === 1 && (
-          <Step1Servicio
-            categories={categories}
-            mainCalendars={mainCalendars}
-            onPick={(main) => setExtrasModal({ main, chosen: new Set() })}
-          />
-        )}
+          {/* Paso 1 */}
+          {step === 1 && (
+            <Step1Servicio
+              categories={categories}
+              mainCalendars={mainCalendars}
+              onPick={(main) => {
+                // Si el servicio tiene opciones, primero mostramos el modal de opciones.
+                if (Array.isArray(main.options) && main.options.length) {
+                  setOptionModal({ main }); // abrir modal de opciones
+                } else {
+                  // Si no tiene opciones, vamos directo a seleccionar extras como antes
+                  setExtrasModal({ main, chosen: new Set() });
+                }
+              }}
+            />
+          )}
 
-        {/* Paso 2 */}
-        {step === 2 && (
-          <Step2ProfesionalCards
-            staffOptions={staffOptions}
-            staffChoice={staffChoice}
-            setStaffChoice={setStaffChoice}
-          />
-        )}
+          {/* Paso 2 */}
+          {step === 2 && (
+            <Step2ProfesionalCards
+              staffOptions={staffOptions}
+              staffChoice={staffChoice}
+              setStaffChoice={setStaffChoice}
+            />
+          )}
 
-        {/* Paso 3 */}
-        {step === 3 && (
-          <Step3FechaHora
-            monthBase={monthBase}
-            setMonthBase={setMonthBase}
-            monthlyDays={monthlyDays}
-            selectedDay={selectedDay}
-            setSelectedDay={setSelectedDay}
-            availableSlots={availableSlots}
-            selectedSlot={selectedSlot}
-            setSelectedSlot={setSelectedSlot}
-            selectedMain={selectedMain}
-            staffOptions={staffOptions}
-            staffChoice={staffChoice}
-            setStaffChoice={setStaffChoice}
-          />
-        )}
+          {/* Paso 3 */}
+          {step === 3 && (
+            <Step3FechaHora
+              monthBase={monthBase}
+              setMonthBase={setMonthBase}
+              monthlyDays={daysOfMonth(monthBase)}
+              selectedDay={selectedDay}
+              setSelectedDay={setSelectedDay}
+              availableSlots={availableSlots}
+              selectedSlot={selectedSlot}
+              setSelectedSlot={setSelectedSlot}
+              selectedMain={selectedMain}
+              staffOptions={staffOptions}
+              staffChoice={staffChoice}
+              setStaffChoice={setStaffChoice}
+            />
+          )}
 
-        {/* Paso 4 */}
-        {step === 4 && (
-          <Step4Datos
-            form={form}
-            setForm={setForm}
-            selectedMain={selectedMain}
-            extraIds={extraIds}
-            extraCalendars={extraCalendars}
-            totalPrice={totalPrice}
-            totalDuration={totalDuration}
-            selectedDay={selectedDay}
-            selectedSlot={selectedSlot}
-            staffChoice={staffChoice}
-            staff={staff}
-          />
-        )}
+          {/* Paso 4 */}
+          {step === 4 && (
+            <Step4Datos
+              form={form}
+              setForm={setForm}
+              selectedMain={selectedMain}
+              extraIds={extraIds}
+              extraCalendars={extraCalendars}
+              selectedOption={selectedOption}
+              totalPrice={totalPrice}
+              totalDuration={totalDuration}
+              selectedDay={selectedDay}
+              selectedSlot={selectedSlot}
+              staffChoice={staffChoice}
+              staff={staff}
+            />
+          )}
 
-        {/* Footer fijo */}
-        <footer className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="max-w-6xl p-3 mx-auto">
-            <div
-              className={clsx(
-                glass,
-                "p-3 flex flex-col sm:flex-row items-center gap-3 sm:justify-between"
-              )}
-            >
-              <div className="text-xs text-slate-300">
-                {selectedMain ? (
-                  <>
-                    <span className="font-medium text-zinc-100">{selectedMain.name}</span>{" "}
-                    · {totalDuration} min · {totalPrice.toFixed(2)} €
-                    {/* Extras en el footer */}
-                    {extraIds?.length ? (
-                      <>
-                        {" · "}
-                        <span className="text-slate-200">
-                          Extras:{" "}
-                          {extraIds
-                            .map((id) => extraCalendars.find((e) => e.id === id)?.name)
-                            .filter(Boolean)
-                            .join(", ")}
-                        </span>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  "Selecciona un servicio para empezar"
+          {/* Footer fijo */}
+          <footer className="fixed bottom-0 left-0 right-0 z-50">
+            <div className="max-w-6xl p-3 mx-auto">
+              <div
+                className={clsx(
+                  glass,
+                  "p-3 flex flex-col sm:flex-row items-center gap-3 sm:justify-between"
                 )}
-              </div>
+              >
+                <div className="text-xs text-slate-300">
+                  {selectedMain ? (
+                    <>
+                      <span className="font-medium text-zinc-100">
+                        {selectedMain.name}
+                      </span>{" "}
+                      · {totalDuration} min · {totalPrice.toFixed(2)} €
+                      {selectedOption ? (
+                        <>
+                          {" · "}
+                          <span className="text-slate-200">
+                            Opción: {selectedOption.name}
+                          </span>
+                        </>
+                      ) : null}
+                      {extraIds?.length ? (
+                        <>
+                          {" · "}
+                          <span className="text-slate-200">
+                            Extras:{" "}
+                            {extraIds
+                              .map(
+                                (id) =>
+                                  extraCalendars.find((e) => e.id === id)?.name
+                              )
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    "Selecciona un servicio para empezar"
+                  )}
+                </div>
 
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={goPrev} disabled={step === 1}>
-                  ← Anterior
-                </Button>
-                {step < 4 ? (
-                  <Button variant="primary" onClick={goNext} disabled={!stepValid}>
-                    Siguiente →
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={goPrev}
+                    disabled={step === 1}
+                  >
+                    ← Anterior
                   </Button>
-                ) : (
-                  <Button variant="primary" onClick={reservar} disabled={!stepValid}>
-                    Confirmar reserva
-                  </Button>
-                )}
+                  {step < 4 ? (
+                    <Button
+                      variant="primary"
+                      onClick={goNext}
+                      disabled={!stepValid}
+                    >
+                      Siguiente →
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      onClick={reservar}
+                      disabled={!stepValid}
+                    >
+                      Confirmar reserva
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </footer>
+          </footer>
+          {/* Modal de opciones */}
+          {optionModal && (
+            <OptionsModal
+              main={optionModal.main}
+              options={
+                Array.isArray(optionModal.main.options)
+                  ? optionModal.main.options
+                  : []
+              }
+              onClose={() => setOptionModal(null)}
+              onConfirm={(chosenOptionId) => {
+                // fija el main y la option seleccionada
+                setMainId(optionModal.main.id);
+                setOptionId(chosenOptionId);
+                setOptionModal(null);
+                // tras elegir opción, abrimos extras (si los hay)
+                const ids = optionModal.main.extrasSupported || [];
+                const hasExtras = ids.length > 0;
+                if (hasExtras) {
+                  setExtrasModal({ main: optionModal.main, chosen: new Set() });
+                } else {
+                  // si no hay extras, saltamos directo al paso 2 (profesional)
+                  setStep(2);
+                }
+              }}
+            />
+          )}
 
-        {/* Modal de extras */}
-        {extrasModal && (
-          <ExtrasModal
-            main={extrasModal.main}
-            extras={supportedExtras}
-            chosen={extrasModal.chosen}
-            onClose={() => setExtrasModal(null)}
-            onConfirm={(chosenIds) => {
-              setMainId(extrasModal.main.id);
-              setExtraIds(chosenIds);
-              setExtrasModal(null);
-              setStep(2); // -> al confirmar extras, pasa a Profesional
-            }}
-          />
-        )}
-      </>
-    )}
-  </div>
-);
-
+          {/* Modal de extras */}
+          {extrasModal && (
+            <ExtrasModal
+              main={extrasModal.main}
+              extras={supportedExtras}
+              chosen={extrasModal.chosen}
+              onClose={() => setExtrasModal(null)}
+              onConfirm={(chosenIds) => {
+                setMainId(extrasModal.main.id);
+                setExtraIds(chosenIds);
+                setExtrasModal(null);
+                setStep(2);
+              }}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
-/* Paso 1 – Servicios (tarjetas horizontales) */
+/* Paso 1 – Servicios */
 function Step1Servicio({ categories, mainCalendars, onPick }) {
   const [catId, setCatId] = useState("all");
-
   const filtered = mainCalendars.filter((c) =>
     catId === "all" ? true : c.categoryId === catId
   );
@@ -385,7 +487,6 @@ function Step1Servicio({ categories, mainCalendars, onPick }) {
         Elige servicio
       </h2>
 
-      {/* Filtro de categoría (siempre visible) */}
       <div className="mb-4">
         <div className="grid gap-2 sm:max-w-xs">
           <select
@@ -409,12 +510,14 @@ function Step1Servicio({ categories, mainCalendars, onPick }) {
           if (!cals.length) return null;
           return (
             <div key={cat.id} className="space-y-2">
-              <div className="text-base font-semibold sm:text-lg">{cat.label}</div>
-
+              <div className="text-base font-semibold sm:text-lg">
+                {cat.label}
+              </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {cals.map((c) => {
                   const hasOffer =
-                    c.offerPrice != null && Number(c.offerPrice) < Number(c.price || 0);
+                    c.offerPrice != null &&
+                    Number(c.offerPrice) < Number(c.price || 0);
                   return (
                     <button
                       key={c.id}
@@ -424,11 +527,13 @@ function Step1Servicio({ categories, mainCalendars, onPick }) {
                     >
                       <div className="flex items-stretch gap-3">
                         <img
-                          src={c.imageUrl || "https://placehold.co/200x140?text=Servicio"}
+                          src={
+                            c.imageUrl ||
+                            "https://placehold.co/200x140?text=Servicio"
+                          }
                           alt=""
                           className="object-cover w-40 border h-28 rounded-xl border-white/10"
                         />
-
                         <div className="flex-1 min-w-0">
                           <div className="text-base font-semibold truncate sm:text-lg">
                             {c.name}
@@ -436,7 +541,6 @@ function Step1Servicio({ categories, mainCalendars, onPick }) {
                           <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
                             {c.description}
                           </div>
-
                           <div className="mt-2 text-sm">
                             {hasOffer ? (
                               <div>
@@ -452,7 +556,9 @@ function Step1Servicio({ categories, mainCalendars, onPick }) {
                                 {Number(c.price || 0).toFixed(2)} €
                               </div>
                             )}
-                            <div className="text-xs text-slate-300">{c.duration} min</div>
+                            <div className="text-xs text-slate-300">
+                              {c.duration} min
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -468,48 +574,53 @@ function Step1Servicio({ categories, mainCalendars, onPick }) {
   );
 }
 
-
-
-/* Modal de Extras (tarjetas pequeñas con + / ✓) */
+/* Modal de Extras */
 function ExtrasModal({ main, extras, chosen, onClose, onConfirm }) {
   const [selected, setSelected] = useState(new Set(chosen || []));
-
-  const toggle = (id) => {
+  const toggle = (id) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
 
   return (
     <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/50 p-4">
       <div className={clsx(glass, "w-[min(96vw,720px)] p-5")}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-semibold">Añadir extras — {main.name}</h3>
+          <h3 className="text-base font-semibold">
+            Añadir extras — {main.name}
+          </h3>
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cerrar
           </Button>
         </div>
 
         {extras.length ? (
-          // -> una sola columna
           <div className="grid gap-3">
             {extras.map((e) => {
               const isSel = selected.has(e.id);
               return (
-                <div key={e.id} className={clsx(cardGlass, "p-2 flex gap-2 items-center")}>
+                <div
+                  key={e.id}
+                  className={clsx(cardGlass, "p-2 flex gap-2 items-center")}
+                >
                   <img
                     src={e.imageUrl || "https://placehold.co/120x90?text=Extra"}
                     alt=""
                     className="object-cover w-24 h-20 border rounded-lg border-white/10"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-semibold truncate">{e.name}</div>
-                    <div className="text-xs text-slate-300 line-clamp-2">{e.description || "—"}</div>
+                    <div className="text-sm font-semibold truncate">
+                      {e.name}
+                    </div>
+                    <div className="text-xs text-slate-300 line-clamp-2">
+                      {e.description || "—"}
+                    </div>
                     <div className="flex items-center gap-2 mt-1 text-xs">
-                      {e.price != null && <span>{Number(e.price).toFixed(2)} €</span>}
+                      {e.price != null && (
+                        <span>{Number(e.price).toFixed(2)} €</span>
+                      )}
                       {e.duration != null && <span>· {e.duration} min</span>}
                     </div>
                   </div>
@@ -531,7 +642,9 @@ function ExtrasModal({ main, extras, chosen, onClose, onConfirm }) {
             })}
           </div>
         ) : (
-          <div className="text-sm text-slate-300">Este servicio no tiene extras.</div>
+          <div className="text-sm text-slate-300">
+            Este servicio no tiene extras.
+          </div>
         )}
 
         <div className="flex justify-end gap-2 mt-4">
@@ -550,8 +663,114 @@ function ExtrasModal({ main, extras, chosen, onClose, onConfirm }) {
   );
 }
 
+/* Modal de Opciones */
+function OptionsModal({ main, options = [], onClose, onConfirm }) {
+  const [sel, setSel] = useState(null);
 
-/* Paso 2 – Profesional (tarjetas) */
+  useEffect(() => {
+    // Si hay opción "base" (sin recargo) intenta pre-seleccionarla
+    const base = options.find(
+      (o) => (o.price ?? 0) === 0 && (o.duration ?? 0) === 0
+    );
+    if (base) setSel(base.id);
+  }, [options]);
+
+  return (
+    <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/50 p-4">
+      <div className={clsx(glass, "w-[min(96vw,720px)] p-5")}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold">
+            Elige opción — {main.name}
+          </h3>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cerrar
+          </Button>
+        </div>
+
+        {options.length ? (
+          <div className="grid gap-3">
+            {options.map((o) => {
+              const active = sel === o.id;
+              const hasAdd = (o.duration ?? 0) || (o.price ?? 0);
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setSel(o.id)}
+                  className={clsx(
+                    cardGlass,
+                    "p-2 flex gap-2 items-center text-left",
+                    active && "ring-2 ring-cyan-400/40"
+                  )}
+                >
+                  <img
+                    src={
+                      o.imageUrl || "https://placehold.co/120x90?text=Opción"
+                    }
+                    alt=""
+                    className="object-cover w-24 h-20 border rounded-lg border-white/10"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold truncate">
+                      {o.name}
+                    </div>
+                    <div className="text-xs text-slate-300 line-clamp-2">
+                      {o.description || "—"}
+                    </div>
+                    <div className="mt-1 text-xs">
+                      {hasAdd ? (
+                        <>
+                          {o.duration ? <span>+{o.duration} min</span> : null}
+                          {o.price ? (
+                            <span>
+                              {o.duration ? " · " : ""}+
+                              {Number(o.price).toFixed(2)} €
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span>Sin recargo</span>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className={clsx(
+                      "rounded-full w-8 h-8 border flex items-center justify-center",
+                      active
+                        ? "border-cyan-400/50 bg-cyan-500/30 text-cyan-100"
+                        : "border-white/15 bg-white/10"
+                    )}
+                  >
+                    {active ? "✓" : ""}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-sm text-slate-300">
+            Este servicio no tiene opciones.
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 mt-4">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => onConfirm(sel)}
+            disabled={!sel}
+          >
+            Continuar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Paso 2 – Profesional */
 function Step2ProfesionalCards({ staffOptions, staffChoice, setStaffChoice }) {
   const Card = ({ active, children, onClick }) => (
     <button
@@ -571,40 +790,49 @@ function Step2ProfesionalCards({ staffOptions, staffChoice, setStaffChoice }) {
     <section className={clsx(glass, "p-4")}>
       <h2 className="mb-3 text-base font-semibold">2) Elige profesional</h2>
 
-<div className="grid gap-3 md:grid-cols-2">
-        <Card active={staffChoice === "random"} onClick={() => setStaffChoice("random")}>
-            <div className="flex items-stretch w-full gap-3">
-    <img
-      src="https://placehold.co/200x140?text=Aleatorio"
-      className="object-cover w-40 border h-28 rounded-xl border-white/10"
-      alt=""
-    />
-    <div className="flex-1 min-w-0">
-      <div className="text-base font-semibold truncate sm:text-lg">Aleatorio</div>
-      <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
-        Asignaremos la mejor opción disponible
-      </div>
-    </div>
-  </div>
-
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card
+          active={staffChoice === "random"}
+          onClick={() => setStaffChoice("random")}
+        >
+          <div className="flex items-stretch w-full gap-3">
+            <img
+              src="https://placehold.co/200x140?text=Aleatorio"
+              className="object-cover w-40 border h-28 rounded-xl border-white/10"
+              alt=""
+            />
+            <div className="flex-1 min-w-0">
+              <div className="text-base font-semibold truncate sm:text-lg">
+                Aleatorio
+              </div>
+              <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
+                Asignaremos la mejor opción disponible
+              </div>
+            </div>
+          </div>
         </Card>
 
         {staffOptions.map((s) => (
-          <Card key={s.id} active={staffChoice === s.id} onClick={() => setStaffChoice(s.id)}>
-              <div className="flex items-stretch w-full gap-3">
-    <img
-      src={s.imageUrl || "https://placehold.co/200x140?text=Staff"}
-      className="object-cover w-40 border h-28 rounded-xl border-white/10"
-      alt=""
-    />
-    <div className="flex-1 min-w-0">
-      <div className="text-base font-semibold truncate sm:text-lg">{s.name}</div>
-      <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
-        {s.bio || "Profesional del equipo"}
-      </div>
-    </div>
-  </div>
-
+          <Card
+            key={s.id}
+            active={staffChoice === s.id}
+            onClick={() => setStaffChoice(s.id)}
+          >
+            <div className="flex items-stretch w-full gap-3">
+              <img
+                src={s.imageUrl || "https://placehold.co/200x140?text=Staff"}
+                className="object-cover w-40 border h-28 rounded-xl border-white/10"
+                alt=""
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-base font-semibold truncate sm:text-lg">
+                  {s.name}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-300 line-clamp-2">
+                  {s.bio || "Profesional del equipo"}
+                </div>
+              </div>
+            </div>
           </Card>
         ))}
       </div>
@@ -623,34 +851,36 @@ function Step3FechaHora({
   selectedSlot,
   setSelectedSlot,
   selectedMain,
-    staffOptions,
+  staffOptions,
   staffChoice,
   setStaffChoice,
-
 }) {
   return (
     <section className={clsx(glass, "p-4")}>
       <h2 className="mb-3 text-base font-semibold">3) Elige día y hora</h2>
-{/* Selector de profesional (si hay opciones) */}
-{selectedMain && (
-  <div className="mb-3">
-    <label className="block mb-1 text-xs text-slate-300">Profesional</label>
-    <select
-      value={staffChoice}
-      onChange={(e) => setStaffChoice(e.target.value)}
-      className="px-3 py-2 text-sm border rounded-xl border-white/15 bg-white/10"
-    >
-      <option value="random">Aleatorio</option>
-      { (selectedMain.staffIds || [])
-        .map(id => staffOptions.find(s => s.id === id))
-        .filter(Boolean)
-        .map(s => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))
-      }
-    </select>
-  </div>
-)}
+
+      {selectedMain && (
+        <div className="mb-3">
+          <label className="block mb-1 text-xs text-slate-300">
+            Profesional
+          </label>
+          <select
+            value={staffChoice}
+            onChange={(e) => setStaffChoice(e.target.value)}
+            className="px-3 py-2 text-sm border rounded-xl border-white/15 bg-white/10"
+          >
+            <option value="random">Aleatorio</option>
+            {(selectedMain.staffIds || [])
+              .map((id) => staffOptions.find((s) => s.id === id))
+              .filter(Boolean)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-[1fr_280px]">
         <div className="p-3 border rounded-xl border-white/10 bg-white/5">
@@ -658,18 +888,25 @@ function Step3FechaHora({
             <Button
               variant="ghost"
               onClick={() =>
-                setMonthBase((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
+                setMonthBase(
+                  (p) => new Date(p.getFullYear(), p.getMonth() - 1, 1)
+                )
               }
             >
               ←
             </Button>
             <div className="text-sm font-semibold">
-              {monthBase.toLocaleString(undefined, { month: "long", year: "numeric" })}
+              {monthBase.toLocaleString(undefined, {
+                month: "long",
+                year: "numeric",
+              })}
             </div>
             <Button
               variant="ghost"
               onClick={() =>
-                setMonthBase((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
+                setMonthBase(
+                  (p) => new Date(p.getFullYear(), p.getMonth() + 1, 1)
+                )
               }
             >
               →
@@ -684,7 +921,8 @@ function Step3FechaHora({
             {monthlyDays.map((d) => {
               const isSun = d.getDay() === 0;
               const selectable = !isSun;
-              const isSelected = selectedDay && d.toDateString() === selectedDay.toDateString();
+              const isSelected =
+                selectedDay && d.toDateString() === selectedDay.toDateString();
               return (
                 <button
                   key={d.toISOString()}
@@ -696,7 +934,8 @@ function Step3FechaHora({
                     selectable
                       ? "border-white/10 bg-white/10 hover:bg-white/15"
                       : "border-white/5 bg-white/5 opacity-40 cursor-not-allowed",
-                    isSelected && "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
+                    isSelected &&
+                      "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
                   )}
                 >
                   {d.getDate()}
@@ -708,57 +947,70 @@ function Step3FechaHora({
 
         <div className="p-3 border rounded-xl border-white/10 bg-white/5">
           <div className="mb-2 text-xs text-slate-300">Horas disponibles</div>
-          {/* Partición mañana / tarde */}
-{availableSlots.length ? (() => {
-  const toMinutes = (t) => {
-    const [H, M] = t.split(":").map(Number);
-    return H * 60 + M;
-    };
-  const morning = availableSlots.filter(h => toMinutes(h) < 14 * 60);
-  const afternoon = availableSlots.filter(h => toMinutes(h) >= 14 * 60);
 
-  const SlotBtn = ({ hh }) => (
-    <button
-      key={hh}
-      type="button"
-      onClick={() => setSelectedSlot(hh)}
-      className={clsx(
-        "px-2 py-1 rounded-md border text-sm",
-        selectedSlot === hh
-          ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
-          : "border-white/10 bg-white/10 hover:bg-white/15"
-      )}
-    >
-      {hh}
-    </button>
-  );
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <div className="mb-1 text-xs text-slate-300">Mañana</div>
-        <div className="grid grid-cols-3 gap-2">
-          {morning.length ? morning.map(h => <SlotBtn hh={h} />) : (
-            <div className="col-span-3 text-sm text-slate-300">—</div>
+          {availableSlots.length ? (
+            (() => {
+              const toMinutes = (t) => {
+                const [H, M] = t.split(":").map(Number);
+                return H * 60 + M;
+              };
+              const morning = availableSlots.filter(
+                (h) => toMinutes(h) < 14 * 60
+              );
+              const afternoon = availableSlots.filter(
+                (h) => toMinutes(h) >= 14 * 60
+              );
+              const SlotBtn = ({ hh }) => (
+                <button
+                  key={hh}
+                  type="button"
+                  onClick={() => setSelectedSlot(hh)}
+                  className={clsx(
+                    "px-2 py-1 rounded-md border text-sm",
+                    selectedSlot === hh
+                      ? "border-cyan-400/40 bg-cyan-500/20 text-cyan-100"
+                      : "border-white/10 bg-white/10 hover:bg-white/15"
+                  )}
+                >
+                  {hh}
+                </button>
+              );
+              return (
+                <div className="space-y-3">
+                  <div>
+                    <div className="mb-1 text-xs text-slate-300">Mañana</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {morning.length ? (
+                        morning.map((h) => <SlotBtn hh={h} />)
+                      ) : (
+                        <div className="col-span-3 text-sm text-slate-300">
+                          —
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-xs text-slate-300">Tarde</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {afternoon.length ? (
+                        afternoon.map((h) => <SlotBtn hh={h} />)
+                      ) : (
+                        <div className="col-span-3 text-sm text-slate-300">
+                          —
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="col-span-3 text-sm text-slate-300">
+              {selectedDay
+                ? "Sin franjas para este día."
+                : "Selecciona un día."}
+            </div>
           )}
-        </div>
-      </div>
-      <div>
-        <div className="mb-1 text-xs text-slate-300">Tarde</div>
-        <div className="grid grid-cols-3 gap-2">
-          {afternoon.length ? afternoon.map(h => <SlotBtn hh={h} />) : (
-            <div className="col-span-3 text-sm text-slate-300">—</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-})() : (
-  <div className="col-span-3 text-sm text-slate-300">
-    {selectedDay ? "Sin franjas para este día." : "Selecciona un día."}
-  </div>
-)}
-
         </div>
       </div>
     </section>
@@ -770,6 +1022,7 @@ function Step4Datos({
   form,
   setForm,
   selectedMain,
+  selectedOption,
   extraIds,
   extraCalendars,
   totalPrice,
@@ -779,14 +1032,38 @@ function Step4Datos({
   staffChoice,
   staff,
 }) {
-    const [paymentMethod, setPaymentMethod] = useState("online"); // 'online' | 'store'
-    const [showSummary, setShowSummary] = useState(false);
-
+  const [paymentMethod, setPaymentMethod] = useState("online"); // 'online' | 'store'
+  const [showSummary, setShowSummary] = useState(false);
 
   const extrasNames =
-    extraIds.map((id) => extraCalendars.find((e) => e.id === id)?.name).filter(Boolean) || [];
+    extraIds
+      .map((id) => extraCalendars.find((e) => e.id === id)?.name)
+      .filter(Boolean) || [];
   const staffName =
-    staffChoice === "random" ? "Aleatorio" : staff.find((s) => s.id === staffChoice)?.name;
+    staffChoice === "random"
+      ? "Aleatorio"
+      : staff.find((s) => s.id === staffChoice)?.name;
+      // ==== Desglose base / opción / extras ====
+const basePrice = Number(selectedMain?.price || 0);
+const baseDuration = Number(selectedMain?.duration || 0);
+
+const optPrice = selectedOption?.price != null ? Number(selectedOption.price) : 0;
+const optDuration = selectedOption?.duration != null ? Number(selectedOption.duration) : 0;
+
+const extrasBreakdown = (extraIds || [])
+  .map((id) => {
+    const ex = extraCalendars.find((e) => e.id === id);
+    if (!ex) return null;
+    return {
+      id,
+      name: ex.name,
+      price: Number(ex.price ?? 0) || 0,
+      duration: Number(ex.duration ?? 0) || 0,
+      imageUrl: ex.imageUrl || "",
+    };
+  })
+  .filter(Boolean);
+
 
   return (
     <section className={clsx(glass, "p-4")}>
@@ -802,7 +1079,9 @@ function Step4Datos({
         <Field label="Apellidos">
           <Input
             value={form.apellidos}
-            onChange={(e) => setForm((f) => ({ ...f, apellidos: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, apellidos: e.target.value }))
+            }
           />
         </Field>
         <Field label="Email">
@@ -815,7 +1094,9 @@ function Step4Datos({
         <Field label="Teléfono">
           <Input
             value={form.telefono}
-            onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, telefono: e.target.value }))
+            }
           />
         </Field>
       </div>
@@ -829,7 +1110,8 @@ function Step4Datos({
         />
         Acepto recibir confirmación y recordatorios
       </label>
-      {/* Botones de pago */}
+
+      {/* Pago */}
       <div className="flex gap-2 mt-3">
         <button
           type="button"
@@ -857,148 +1139,188 @@ function Step4Datos({
         </button>
       </div>
 
-      {/* Sección de pago (solo si online) */}
       {paymentMethod === "online" && (
         <div className="p-3 mt-3 border rounded-xl border-white/10 bg-white/5">
           <div className="mb-2 text-sm font-semibold">Pago</div>
-          {/* Placeholder de pago: sustituye por tu integracion (Stripe/TPV) */}
           <div className="grid gap-2 sm:grid-cols-2">
             <Field label="Titular">
               <Input
                 value={form.cardName || ""}
-                onChange={(e) => setForm((f) => ({ ...f, cardName: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, cardName: e.target.value }))
+                }
               />
             </Field>
             <Field label="Número tarjeta">
               <Input
                 value={form.cardNumber || ""}
-                onChange={(e) => setForm((f) => ({ ...f, cardNumber: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, cardNumber: e.target.value }))
+                }
               />
             </Field>
             <Field label="Caducidad (MM/AA)">
               <Input
                 value={form.cardExp || ""}
-                onChange={(e) => setForm((f) => ({ ...f, cardExp: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, cardExp: e.target.value }))
+                }
               />
             </Field>
             <Field label="CVC">
               <Input
                 value={form.cardCvc || ""}
-                onChange={(e) => setForm((f) => ({ ...f, cardCvc: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, cardCvc: e.target.value }))
+                }
               />
             </Field>
           </div>
           <div className="mt-2 text-xs text-slate-300">
-            * Demo UI. Reemplaza por el elemento seguro de tu pasarela.
+            * Demo UI. Reemplaza por tu pasarela.
           </div>
         </div>
       )}
 
-      {/* Resumen con mini-imágenes (acordeón) */}
-<div className="mt-4">
-  {/* Encabezado toggle */}
-  <button
-    type="button"
-    onClick={() => setShowSummary((s) => !s)}
-    className={clsx(
-      "w-full flex items-center justify-between px-3 py-2 rounded-xl border",
-      "border-white/10 bg-white/5 hover:bg-white/10"
-    )}
-    aria-expanded={showSummary}
-    aria-controls="resumen-reserva"
-  >
-    <span className="text-sm font-semibold">
-      {showSummary ? "Ocultar datos de tu reserva" : "Ver datos de tu reserva"}
-    </span>
-    {/* Chevrón */}
-    <svg
-      className={clsx("w-4 h-4 transition-transform", showSummary ? "rotate-180" : "rotate-0")}
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.24 3.36a.75.75 0 01-.94 0L5.21 8.31a.75.75 0 01.02-1.1z" clipRule="evenodd" />
-    </svg>
-  </button>
-
-  {/* Contenido colapsable */}
-  <div
-    id="resumen-reserva"
-    className={clsx(
-      "grid gap-2 mt-3 transition-all",
-      showSummary ? "block" : "hidden"
-    )}
-  >
-    {/* Servicio */}
-    <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
-      <img
-        src={selectedMain?.imageUrl || "https://placehold.co/80x60?text=Svc"}
-        alt=""
-        className="object-cover w-16 h-12 border rounded-lg border-white/10"
-      />
-      <div className="min-w-0">
-        <div className="text-xs text-slate-300">Servicio</div>
-        <div className="text-sm font-semibold truncate">{selectedMain?.name || "—"}</div>
-      </div>
-    </div>
-
-    {/* Profesional */}
-    <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
-      {(() => {
-        const s = staffChoice === "random" ? null : staff.find((x) => x.id === staffChoice);
-        const img = s?.imageUrl || "https://placehold.co/80x60?text=Pro";
-        const name = staffChoice === "random" ? "Aleatorio" : (s?.name || "—");
-        return (
-          <>
-            <img
-              src={img}
-              alt=""
-              className="object-cover w-16 h-12 border rounded-lg border-white/10"
+      {/* Resumen (acordeón) */}
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setShowSummary((s) => !s)}
+          className={clsx(
+            "w-full flex items-center justify-between px-3 py-2 rounded-xl border",
+            "border-white/10 bg-white/5 hover:bg-white/10"
+          )}
+          aria-expanded={showSummary}
+          aria-controls="resumen-reserva"
+        >
+          <span className="text-sm font-semibold">
+            {showSummary
+              ? "Ocultar datos de tu reserva"
+              : "Ver datos de tu reserva"}
+          </span>
+          <svg
+            className={clsx(
+              "w-4 h-4 transition-transform",
+              showSummary ? "rotate-180" : "rotate-0"
+            )}
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 011.06.02L10 10.17l3.71-2.94a.75.75 0 111.04 1.08l-4.24 3.36a.75.75 0 01-.94 0L5.21 8.31a.75.75 0 01.02-1.1z"
+              clipRule="evenodd"
             />
-            <div className="min-w-0">
-              <div className="text-xs text-slate-300">Profesional</div>
-              <div className="text-sm font-semibold truncate">{name}</div>
-            </div>
-          </>
-        );
-      })()}
-    </div>
+          </svg>
+        </button>
 
-    {/* Extras */}
-    <div className="p-3 border rounded-xl border-white/10 bg-white/5">
-      <div className="mb-2 text-xs text-slate-300">Extras</div>
-      {extraIds?.length ? (
-        <div className="flex flex-wrap gap-2">
-          {extraIds.map((id) => {
-            const ex = extraCalendars.find((e) => e.id === id);
-            if (!ex) return null;
-            return (
-              <div key={id} className="flex items-center gap-2 px-2 py-1 border rounded-lg border-white/10 bg-white/5">
-                <img
-                  src={ex.imageUrl || "https://placehold.co/60x40?text=Ex"}
-                  alt=""
-                  className="object-cover w-12 border rounded-md h-9 border-white/10"
-                />
-                <span className="text-sm">{ex.name}</span>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="text-sm">Ninguno</div>
-      )}
+        <div
+          id="resumen-reserva"
+          className={clsx(
+            "grid gap-2 mt-3 transition-all",
+            showSummary ? "block" : "hidden"
+          )}
+        >
+          {/* Servicio */}
+<div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
+  <img
+    src={selectedMain?.imageUrl || "https://placehold.co/80x60?text=Svc"}
+    alt=""
+    className="object-cover w-16 h-12 border rounded-lg border-white/10"
+  />
+  <div className="min-w-0">
+    <div className="text-xs text-slate-300">Servicio</div>
+    <div className="text-sm font-semibold truncate">
+      {selectedMain?.name || "—"}
+      {selectedOption ? (
+        <span className="ml-1 text-slate-200">· Opción: {selectedOption.name}</span>
+      ) : null}
     </div>
-
-    {/* Datos y totales */}
-    <div className="grid gap-2 sm:grid-cols-2">
-      <Stat label="Fecha" value={selectedDay ? selectedDay.toLocaleDateString() : "—"} />
-      <Stat label="Hora" value={selectedSlot || "—"} />
-      <Stat label="Duración total" value={`${totalDuration} min`} />
-      <Stat label="Total" value={`${totalPrice.toFixed(2)} €`} />
+    {/* Mini desglose base + opción */}
+    <div className="mt-1 text-xs text-slate-300">
+      Base: {baseDuration} min · {basePrice.toFixed(2)} €
+      {selectedOption ? (
+        <>
+          {" · "}Opción: {optDuration ? `+${optDuration} min` : "+0 min"} · +{optPrice.toFixed(2)} €
+        </>
+      ) : null}
     </div>
   </div>
 </div>
 
+
+          {/* Profesional */}
+          <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
+            {(() => {
+              const s =
+                staffChoice === "random"
+                  ? null
+                  : staff.find((x) => x.id === staffChoice);
+              const img = s?.imageUrl || "https://placehold.co/80x60?text=Pro";
+              const name =
+                staffChoice === "random" ? "Aleatorio" : s?.name || "—";
+              return (
+                <>
+                  <img
+                    src={img}
+                    alt=""
+                    className="object-cover w-16 h-12 border rounded-lg border-white/10"
+                  />
+                  <div className="min-w-0">
+                    <div className="text-xs text-slate-300">Profesional</div>
+                    <div className="text-sm font-semibold truncate">{name}</div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+
+          {/* Extras */}
+          <div className="p-3 border rounded-xl border-white/10 bg-white/5">
+            <div className="mb-2 text-xs text-slate-300">Extras</div>
+            {extraIds?.length ? (
+              <div className="flex flex-wrap gap-2">
+                {extraIds.map((id) => {
+                  const ex = extraCalendars.find((e) => e.id === id);
+                  if (!ex) return null;
+                  return (
+                    <div
+                      key={id}
+                      className="flex items-center gap-2 px-2 py-1 border rounded-lg border-white/10 bg-white/5"
+                    >
+                      <img
+                        src={
+                          ex.imageUrl || "https://placehold.co/60x40?text=Ex"
+                        }
+                        alt=""
+                        className="object-cover w-12 border rounded-md h-9 border-white/10"
+                      />
+                      <span className="text-sm">{ex.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-sm">Ninguno</div>
+            )}
+          </div>
+          
+
+          {/* Datos y totales */}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Stat
+              label="Fecha"
+              value={selectedDay ? selectedDay.toLocaleDateString() : "—"}
+            />
+            <Stat label="Hora" value={selectedSlot || "—"} />
+            <Stat label="Duración total" value={`${totalDuration} min`} />
+            <Stat label="Total" value={`${totalPrice.toFixed(2)} €`} />
+          </div>
+          
+        </div>
+      </div>
     </section>
   );
 }
@@ -1021,29 +1343,34 @@ function Field({ label, children }) {
   );
 }
 
-/* ===================== Pantalla de confirmación ===================== */
+/* ===================== Confirmación ===================== */
 function ConfirmationScreen({ confirm, onClose }) {
   const { name, dateText, timeText, mapsQuery } = confirm;
-  const niceName = name || "cliente";
   const line1 = "Cita reservada con éxito";
   const line3 = `${dateText} a las ${timeText}`;
-  const mapsSrc = `https://www.google.com/maps?q=${encodeURIComponent(mapsQuery)}&output=embed`;
-
-  const [showMap, setShowMap] = useState(false); // <-- mapa oculto hasta terminar typewriter
-
+  const mapsSrc = `https://www.google.com/maps?q=${encodeURIComponent(
+    mapsQuery
+  )}&output=embed`;
+  const [showMap, setShowMap] = useState(false);
   return (
     <div className="min-h-[80vh] grid place-items-center">
-      <div className={clsx(glass, "w-[min(96vw,920px)] p-6 text-center text-zinc-100")}>
+      <div
+        className={clsx(
+          glass,
+          "w-[min(96vw,920px)] p-6 text-center text-zinc-100"
+        )}
+      >
         <SuccessTick className="mx-auto mb-4" />
-
-        {/* Texto con efecto typewriter; cuando termina, mostramos el mapa */}
-        <Typewriter lines={[line1, line3]} onComplete={() => setShowMap(true)} />
-
-        {/* Mapa: aparece después con animación */}
+        <Typewriter
+          lines={[line1, line3]}
+          onComplete={() => setShowMap(true)}
+        />
         <div
           className={clsx(
             "mt-6 transition-all duration-700 ease-out",
-            showMap ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+            showMap
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-2 pointer-events-none"
           )}
         >
           <div className="mb-2 text-xs text-slate-300">Ubicación</div>
@@ -1058,28 +1385,22 @@ function ConfirmationScreen({ confirm, onClose }) {
               />
             )}
           </div>
-          <div className="mt-2 text-xs text-slate-300">
-            {mapsQuery}
-          </div>
+          <div className="mt-2 text-xs text-slate-300">{mapsQuery}</div>
         </div>
-
         <div className="flex justify-center mt-6">
-          <Button variant="primary" onClick={onClose}>Cerrar</Button>
+          <Button variant="primary" onClick={onClose}>
+            Cerrar
+          </Button>
         </div>
       </div>
     </div>
   );
 }
 
-
-/* ============ Animación Tick (SVG con stroke animation) ============ */
 function SuccessTick({ className }) {
   return (
     <div className={clsx("inline-block", className)}>
-      <svg
-        viewBox="0 0 52 52"
-        className="w-16 h-16"
-      >
+      <svg viewBox="0 0 52 52" className="w-16 h-16">
         <circle
           cx="26"
           cy="26"
@@ -1107,37 +1428,30 @@ function SuccessTick({ className }) {
           }}
         />
       </svg>
-      <style>
-        {`@keyframes dash { to { stroke-dashoffset: 0; } }`}
-      </style>
+      <style>{`@keyframes dash { to { stroke-dashoffset: 0; } }`}</style>
     </div>
   );
 }
 
-/* ============ Typewriter (máquina de escribir línea a línea) ============ */
 function Typewriter({ lines = [], onComplete }) {
   const [idx, setIdx] = useState(0);
   const [text, setText] = useState("");
-
   useEffect(() => {
     if (idx >= lines.length) {
-      // Terminado: dispara callback una sola vez
-      if (typeof onComplete === "function") onComplete();
+      typeof onComplete === "function" && onComplete();
       return;
     }
     const line = lines[idx];
     let i = 0;
     setText("");
-
     const int = setInterval(() => {
       i++;
       setText(line.slice(0, i));
       if (i >= line.length) {
         clearInterval(int);
-        setTimeout(() => setIdx((n) => n + 1), 500); // pausa entre líneas
+        setTimeout(() => setIdx((n) => n + 1), 500);
       }
     }, 20);
-
     return () => clearInterval(int);
   }, [idx, lines, onComplete]);
 
@@ -1145,13 +1459,23 @@ function Typewriter({ lines = [], onComplete }) {
   for (let i = 0; i < lines.length; i++) {
     if (i < idx) {
       rendered.push(
-        <p key={i} className={i === 0 ? "text-2xl sm:text-3xl font-bold" : "text-base sm:text-lg"}>
+        <p
+          key={i}
+          className={
+            i === 0 ? "text-2xl sm:text-3xl font-bold" : "text-base sm:text-lg"
+          }
+        >
           {lines[i]}
         </p>
       );
     } else if (i === idx) {
       rendered.push(
-        <p key={i} className={i === 0 ? "text-2xl sm:text-3xl font-bold" : "text-base sm:text-lg"}>
+        <p
+          key={i}
+          className={
+            i === 0 ? "text-2xl sm:text-3xl font-bold" : "text-base sm:text-lg"
+          }
+        >
           {text}
           <span className="inline-block w-2 h-5 ml-1 align-baseline bg-emerald-400 animate-pulse" />
         </p>
@@ -1159,7 +1483,5 @@ function Typewriter({ lines = [], onComplete }) {
       break;
     }
   }
-
   return <div className="space-y-1">{rendered}</div>;
 }
-

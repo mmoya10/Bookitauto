@@ -135,20 +135,59 @@ let memCalendars = [
     status: "active",
   },
   {
-    id: "cal_color_3",
-    type: "main",
-    name: "Mechas Babylights",
-    description: "Mechas finas y naturales",
-    imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Mechas+Babylights&font=montserrat",
-    categoryId: "cat_color",
-    price: 89.0,
-    duration: 120,
-    bufferBefore: 10,
-    bufferAfter: 10,
-    extrasSupported: ["cal_extra_3"],
-    staffIds: ["stf_2"],
-    status: "active",
-  },
+  id: "cal_color_3",
+  type: "main",
+  name: "Mechas Babylights",
+  description: "Mechas finas y naturales",
+  imageUrl: "https://placehold.co/640x360/ffffff/000000?text=Mechas+Babylights&font=montserrat",
+  categoryId: "cat_color",
+  price: 89.0,
+  duration: 120,
+  bufferBefore: 10,
+  bufferAfter: 10,
+  extrasSupported: ["cal_extra_3"],
+  staffIds: ["stf_2"],
+  status: "active",
+  // ⬇️ NUEVO
+  options: [
+    {
+      id: "opt_mb_short",
+      name: "Pelo corto",
+      description: "Por encima de los hombros",
+      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwMzg0NjQwODE5MWFjNTcwZjI4M2VlMGM1MTY6ZmlsZV8wMDAwMDAwMGMyMGM2MWY0ODE3YjNjYWNmMGUxN2M5NyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjUxOWE1ZWUzMmQ4OWViOGUwMjAyNTdjMTYyOTE4NWFmM2UxMTdjNjMzMWI0NWU2MThhYjJmNmEyMGJhN2U3N2IiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+      price: 0,           // opcional: si no pones, se asume 0
+      duration: 0,        // opcional: si no pones, se asume 0
+      status: "active"
+    },
+    {
+      id: "opt_mb_medium",
+      name: "Pelo medio",
+      description: "Hasta los hombros",
+      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwY2I0YTUwODE5MTg0Yjg1YWNhMTE0Zjc2NTI6ZmlsZV8wMDAwMDAwMDlhOGM2MWY2YWI3OTgwNGU4NzkyZjFlNiIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjQ0ZTUzODYzMmMxMmRiOTgyZGY2Y2VlMTU0NTgxODZiMGMyMWVmMDA1MTI3ZTIwMDQ1ZmY4YzY3ZTljNmQwNjkiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+      price: 10,          // suplemento
+      duration: 15,       // +15 min
+      status: "active"
+    },
+    {
+      id: "opt_mb_long",
+      name: "Pelo largo",
+      description: "Por debajo de los hombros",
+      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIwOTEyMjA4ODE5MWFhYjdjYzQ5MTk1MGUzYzc6ZmlsZV8wMDAwMDAwMGYyNmM2MjMwYmQ4ODU1NzMwMDc3Y2JhNyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjRhOGY3NTBjYjBmYjJjYjFmYmUwYzFiYTY5MGJiMzJhMjUxN2FlNDRmMzQxNThkYjRkZmQ4N2ExMTkyMTE1NTMiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+      price: 20,          // suplemento
+      duration: 30,       // +30 min
+      status: "active"
+    },
+    {
+      id: "opt_mb_very_long",
+      name: "Pelo muy largo",
+      description: "Por la cintura",
+      imageUrl: "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhZjIxMGEyMDA4ODE5MWEzNDcwODIyYWM0Nzc4ODE6ZmlsZV8wMDAwMDAwMGU0ZTg2MWY0YmM0ZDE0ZmM0NWM4MTZiNyIsInRzIjoiNDg3ODYzIiwicCI6InB5aSIsInNpZyI6IjhhNWZhOTMzMGVjZmZjYWQ5NzJkYzEwZTVlYWI2NGZmYTk4NGRmNzBhODMwNzI1MzRlYzFjYjU1NmUwMmFlYzYiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+      price: 20,          // suplemento
+      duration: 45,       // +30 min
+      status: "active"
+    }
+  ]
+},
   {
     id: "cal_color_4",
     type: "main",
@@ -278,23 +317,7 @@ let memCalendars = [
   },
 ];
 
-let memBookingSites = [
-  {
-    id: "site_main",
-    name: "Sitio Web Principal",
-    categoryIds: memCategories.map((c) => c.id),
-    calendarIds: memCalendars.map((c) => c.id),
-  },
-  {
-    id: "site_spa",
-    name: "Landing Spa",
-    categoryIds: ["cat_spa"],
-    calendarIds: memCalendars
-      .filter((c) => c.categoryId === "cat_spa" || c.type === "extra")
-      .map((c) => c.id),
-  },
-];
-let activeBookingSiteId = memBookingSites[0]?.id || null;
+
 
 /* ============ Horario negocio / festivos (compat) ============ */
 
@@ -448,7 +471,6 @@ function genWeekCitas() {
   const out = [];
   let n = 1;
 
-  // Conflicto por mismo staff, mirando solo lo ya generado en "out"
   const hasStaffConflictLocal = (staffId, startISO, endISO) => {
     return out.some(
       (a) =>
@@ -460,7 +482,7 @@ function genWeekCitas() {
 
   for (const day of days) {
     const d = new Date(`${day}T00:00:00`);
-    const dow = isoDow(d); // 1..7
+    const dow = isoDow(d);
     const spans = businessHours
       .filter((b) => (b.daysOfWeek || []).includes(dow))
       .map((b) => ({ s: toMinutes(b.startTime), e: toMinutes(b.endTime) }));
@@ -469,7 +491,6 @@ function genWeekCitas() {
       let minute = sp.s;
 
       while (minute + MIN_APT_MIN <= sp.e) {
-        // De vez en cuando dejamos huecos
         if (Math.random() < 0.22) {
           minute += 15;
           continue;
@@ -478,11 +499,17 @@ function genWeekCitas() {
         // Servicio principal
         const main = chooseOne(mains);
 
-        // Duración forzada entre 30-90
-        const baseDur = Number(main.duration || 30);
-        const dur = Math.max(MIN_APT_MIN, Math.min(MAX_APT_MIN, baseDur));
+        // --- NUEVO: opción del calendario (si existe)
+        const opts = Array.isArray(main.options) ? main.options.filter(o => o?.status !== "inactive") : [];
+        const pickedOpt = opts.length ? chooseOne(opts) : null;
+        const optionId = pickedOpt?.id || null;
 
-        // Si no cabe, cortamos tramo
+        // Duración con opción (clamp a MIN..MAX)
+        const baseDur = Number(main.duration || 30);
+        const optDur  = optionId ? optionDuration(main.id, optionId) : 0;
+        const durRaw  = baseDur + optDur;
+        const dur     = Math.max(MIN_APT_MIN, Math.min(MAX_APT_MIN, durRaw));
+
         if (minute + dur > sp.e) break;
 
         // Staff aleatorio
@@ -499,36 +526,30 @@ function genWeekCitas() {
           }
         }
 
-        const priceMain = Number(calMap.get(main.id)?.price || 0);
+        // Precio total = main + opción + extras
+        const priceMain   = Number(calMap.get(main.id)?.price || 0);
+        const priceOption = optionId ? optionPrice(main.id, optionId) : 0;
         const priceExtras = sumExtrasPrice(extraIds, calMap);
-        const totalPrice = +(priceMain + priceExtras).toFixed(2);
+        const totalPrice  = +(priceMain + priceOption + priceExtras).toFixed(2);
 
         const start = iso(day, Math.floor(minute / 60), minute % 60);
         const endMin = minute + dur;
         const end = iso(day, Math.floor(endMin / 60), endMin % 60);
 
-        // Validación estricta
         if (!isWithinBusinessHours(start, end)) {
-          minute += 15;
-          continue;
+          minute += 15; continue;
         }
-        // Evitar solape por mismo staff
         if (hasStaffConflictLocal(staffId, start, end)) {
-          minute += 15;
-          continue;
+          minute += 15; continue;
         }
 
-        // Pasado vs futuro -> status & payment
         const now = new Date();
         const isPast = new Date(end) <= now;
 
-        let status,
-          payment,
-          tiendapago = null;
+        let status, payment, tiendapago = null;
         if (isPast) {
           status = Math.random() < 0.5 ? "completado" : "no_presentado";
           payment = Math.random() < 0.5 ? "online" : "tienda";
-          // Si no se presentó y pago en tienda => tiendapago vacío (null)
           if (status === "no_presentado" && payment === "tienda") {
             tiendapago = null;
           } else if (payment === "tienda") {
@@ -537,10 +558,10 @@ function genWeekCitas() {
         } else {
           status = "pendiente";
           payment = Math.random() < 0.5 ? "online" : "tienda";
-          tiendapago = null; // Futuro: nada en tiendapago
+          tiendapago = null;
         }
 
-        // Cita 1
+        // Cita 1 (incluye optionId)
         out.push({
           id: `apt_${n++}`,
           user: {
@@ -551,6 +572,7 @@ function genWeekCitas() {
           },
           staffId,
           calendarId: main.id,
+          optionId,            // ⬅️ NUEVO
           extraIds,
           totalPrice,
           start,
@@ -562,22 +584,13 @@ function genWeekCitas() {
           tiendapago,
         });
 
-        // Opción: crear una segunda cita en el MISMO slot con OTRO staff (permitido)
+        // Segunda cita en el mismo slot (si toca)
         if (Math.random() < 0.35) {
           const otherStaff = activeStaff.filter((s) => s !== staffId);
           if (otherStaff.length) {
             const s2 = chooseOne(otherStaff);
-
-            if (
-              isWithinBusinessHours(start, end) &&
-              !hasStaffConflictLocal(s2, start, end)
-            ) {
-              // Misma lógica de estado/pagos
-              let st2 = status;
-              let pay2 = payment;
-              let tienda2 = tiendapago;
-
-              // Recalcular estado/pagos para dar variedad
+            if (isWithinBusinessHours(start, end) && !hasStaffConflictLocal(s2, start, end)) {
+              let st2 = status, pay2 = payment, tienda2 = tiendapago;
               if (isPast) {
                 st2 = Math.random() < 0.5 ? "completado" : "no_presentado";
                 pay2 = Math.random() < 0.5 ? "online" : "tienda";
@@ -604,6 +617,7 @@ function genWeekCitas() {
                 },
                 staffId: s2,
                 calendarId: main.id,
+                optionId,        // ⬅️ NUEVO (misma opción)
                 extraIds,
                 totalPrice,
                 start,
@@ -618,7 +632,6 @@ function genWeekCitas() {
           }
         }
 
-        // Avanzamos cursor con pequeño hueco aleatorio
         minute = endMin + (Math.random() < 0.3 ? 15 : 0);
       }
     }
@@ -626,6 +639,7 @@ function genWeekCitas() {
 
   return out;
 }
+
 
 let memAppointments = genWeekCitas();
 
@@ -753,10 +767,6 @@ export async function deleteCalendars(ids) {
   await delay();
   memCalendars = memCalendars.filter((c) => !ids.includes(c.id));
   // limpiar referencias en booking sites
-  memBookingSites = memBookingSites.map((s) => ({
-    ...s,
-    calendarIds: s.calendarIds.filter((id) => !ids.includes(id)),
-  }));
   // y en citas (las marcamos sin calendarId)
   memAppointments = memAppointments.map((a) =>
     ids.includes(a.calendarId) ? { ...a, calendarId: null } : a
@@ -764,45 +774,6 @@ export async function deleteCalendars(ids) {
   return { ok: true };
 }
 
-/* ================== Booking Sites (compat) ================== */
-
-export async function fetchBookingSites() {
-  await delay();
-  return memBookingSites.map((b) => ({
-    ...b,
-    active: b.id === activeBookingSiteId,
-  }));
-}
-export async function setActiveBookingSite({ id }) {
-  await delay();
-  activeBookingSiteId = id;
-  return structuredClone(memBookingSites.find((s) => s.id === id));
-}
-export async function updateBookingSite({ id, categoryIds, calendarIds }) {
-  await delay();
-  const idx = memBookingSites.findIndex((s) => s.id === id);
-  if (idx === -1) throw new Error("Booking site no encontrado");
-  memBookingSites[idx] = {
-    ...memBookingSites[idx],
-    categoryIds: Array.isArray(categoryIds)
-      ? categoryIds
-      : memBookingSites[idx].categoryIds,
-    calendarIds: Array.isArray(calendarIds)
-      ? calendarIds
-      : memBookingSites[idx].calendarIds,
-  };
-  return structuredClone(memBookingSites[idx]);
-}
-export async function deleteBookingSite(id) {
-  await delay();
-  const idx = memBookingSites.findIndex((s) => s.id === id);
-  if (idx === -1) throw new Error("Booking site no encontrado");
-  const removed = memBookingSites.splice(idx, 1)[0];
-  if (removed?.id === activeBookingSiteId) {
-    activeBookingSiteId = memBookingSites[0]?.id ?? null;
-  }
-  return { ok: true };
-}
 
 /* ================== Horas/ Festivos (compat) ================= */
 
@@ -870,26 +841,15 @@ export async function createAppointment(payload) {
   const start = payload.start;
   const end = payload.end;
 
-  // 1) Validar duración
   const dur = durationMinutes(start, end);
   if (dur < MIN_APT_MIN || dur > MAX_APT_MIN) {
-    throw new Error(
-      `La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`
-    );
+    throw new Error(`La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`);
   }
-
-  // 2) Validar horario laboral
   if (!isWithinBusinessHours(start, end)) {
-    throw new Error(
-      "La cita no puede estar fuera del horario laboral del negocio."
-    );
+    throw new Error("La cita no puede estar fuera del horario laboral del negocio.");
   }
-
-  // 3) Conflictos con el mismo staff
   if (payload.staffId && hasStaffConflict(payload.staffId, start, end)) {
-    throw new Error(
-      "El staff seleccionado ya tiene otra cita/ausencia en ese intervalo."
-    );
+    throw new Error("El staff seleccionado ya tiene otra cita/ausencia en ese intervalo.");
   }
 
   const id = rid();
@@ -898,6 +858,7 @@ export async function createAppointment(payload) {
     user: payload.user ?? null,
     staffId: payload.staffId ?? null,
     calendarId: payload.calendarId ?? null,
+    optionId: payload.optionId ?? null,              // ⬅️ NUEVO
     extraIds: Array.isArray(payload.extraIds) ? payload.extraIds : [],
     start,
     end,
@@ -905,25 +866,29 @@ export async function createAppointment(payload) {
     notes: payload.notes || "",
     status: payload.status || "pendiente",
     payment: payload.payment || "tienda",
-    tiendapago: payload.tiendapago ?? null, // 'efectivo' | 'tarjeta' | null
-    propina: Number(payload.propina ?? 0), // >= 0
+    tiendapago: payload.tiendapago ?? null,
+    propina: Number(payload.propina ?? 0),
   };
 
-  // calcular total si no viene
+  // calcular total si no viene (main + option + extras)
   let total = payload.totalPrice;
   if (total == null) {
     const main = memCalendars.find((c) => c.id === base.calendarId);
-    total = Number(main?.price || 0);
+    const priceMain   = Number(main?.price || 0);
+    const priceOption = base.optionId ? optionPrice(base.calendarId, base.optionId) : 0;
+    let priceExtras   = 0;
     for (const exId of base.extraIds) {
       const ex = memCalendars.find((c) => c.id === exId);
-      total += Number(ex?.price || 0);
+      priceExtras += Number(ex?.price || 0);
     }
+    total = priceMain + priceOption + priceExtras;
   }
   base.totalPrice = +Number(total).toFixed(2);
 
   memAppointments.push(base);
   return structuredClone(base);
 }
+
 
 // Solo mover fechas
 export async function updateAppointmentDates({ id, start, end }) {
@@ -965,38 +930,32 @@ export async function updateAppointment(payload) {
   if (i === -1) throw new Error("Cita no encontrada");
   const prev = memAppointments[i];
 
-  // Determinar nuevos valores provisionales
   const nextStart = payload.start ?? prev.start;
   const nextEnd = payload.end ?? prev.end;
   const nextStaff = payload.staffId ?? prev.staffId;
 
-  // Si se tocan fechas o staff, validar
   if (payload.start != null || payload.end != null || payload.staffId != null) {
     const dur = durationMinutes(nextStart, nextEnd);
     if (dur < MIN_APT_MIN || dur > MAX_APT_MIN) {
-      throw new Error(
-        `La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`
-      );
+      throw new Error(`La cita debe durar entre ${MIN_APT_MIN} y ${MAX_APT_MIN} minutos.`);
     }
     if (!isWithinBusinessHours(nextStart, nextEnd)) {
-      throw new Error(
-        "La cita no puede estar fuera del horario laboral del negocio."
-      );
+      throw new Error("La cita no puede estar fuera del horario laboral del negocio.");
     }
     if (nextStaff && hasStaffConflict(nextStaff, nextStart, nextEnd, prev.id)) {
-      throw new Error(
-        "El staff seleccionado ya tiene otra cita/ausencia en ese intervalo."
-      );
+      throw new Error("El staff seleccionado ya tiene otra cita/ausencia en ese intervalo.");
     }
   }
 
-  // Recalcular total si cambian calendario/extras o si lo mandas explícito
   let nextTotal = payload.totalPrice ?? prev.totalPrice;
-  if (payload.calendarId != null || payload.extraIds != null) {
-    const calId = payload.calendarId ?? prev.calendarId;
+  if (payload.calendarId != null || payload.extraIds != null || payload.optionId != null) {
+    const calId    = payload.calendarId ?? prev.calendarId;
     const extraIds = payload.extraIds ?? prev.extraIds;
+    const optId    = payload.optionId ?? prev.optionId;
+
     const main = memCalendars.find((c) => c.id === calId);
     let tot = Number(main?.price || 0);
+    tot += optId ? optionPrice(calId, optId) : 0;
     for (const exId of extraIds) {
       const ex = memCalendars.find((c) => c.id === exId);
       tot += Number(ex?.price || 0);
@@ -1011,16 +970,31 @@ export async function updateAppointment(payload) {
     end: nextEnd,
     staffId: nextStaff,
     totalPrice: +Number(nextTotal).toFixed(2),
-    // normalizamos nuevos campos si vienen
     tiendapago: payload.tiendapago ?? prev.tiendapago ?? null,
-    propina:
-      payload.propina != null ? Number(payload.propina) : prev.propina ?? 0,
+    propina: payload.propina != null ? Number(payload.propina) : prev.propina ?? 0,
   };
   return structuredClone(memAppointments[i]);
 }
+
 
 export async function deleteAppointment(id) {
   await delay(80);
   memAppointments = memAppointments.filter((a) => a.id !== id);
   return { ok: true };
+}
+function findCalendar(id) {
+  return memCalendars.find((c) => c.id === id);
+}
+function findOption(calendarId, optionId) {
+  const cal = findCalendar(calendarId);
+  if (!cal || !Array.isArray(cal.options)) return null;
+  return cal.options.find((o) => o.id === optionId) || null;
+}
+function optionPrice(calendarId, optionId) {
+  const opt = findOption(calendarId, optionId);
+  return opt && opt.price != null ? Number(opt.price) : 0;
+}
+function optionDuration(calendarId, optionId) {
+  const opt = findOption(calendarId, optionId);
+  return opt && opt.duration != null ? Number(opt.duration) : 0;
 }

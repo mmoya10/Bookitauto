@@ -33,7 +33,7 @@ export default function App() {
           <Routes>
             {/* pública */}
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/booking/:bizSlug/:branchSlug/:siteSlug" element={<BookingSitePublic />} />
+            <Route path="/booking/:bizSlug/:branchSlug" element={<BookingSitePublic />} />
 
 
             {/* protegidas */}
