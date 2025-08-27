@@ -18,7 +18,7 @@ let memCategories = [
 let memStaff = [
   {
     id: "stf_1",
-    name: "Laura",
+    name: "Alberto",
     imageUrl: Staff1,
     bio: "Especialista en color y tratamientos.",
     color: "#820096",

@@ -205,7 +205,7 @@ function TableView({
 /* Imagen arriba visible COMPLETA; datos en panel sólido debajo + acciones extra opcionales */
 function CardsView({ items, toCard, selected, toggleOne }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
       {items.map((it) => {
         const {
           id,
@@ -221,25 +221,28 @@ function CardsView({ items, toCard, selected, toggleOne }) {
             key={id}
             className="overflow-hidden border rounded-2xl border-white/10 bg-white/5"
           >
-            {/* Imagen arriba */}
-            <div className="relative w-full h-48 bg-white">
-              <img
-                src={imageUrl}
-                alt=""
-                className="absolute object-cover w-auto h-full -translate-x-1/2 -translate-y-1/2 select-none left-1/2 top-1/2 max-w-none"
-                draggable={false}
-              />
-              {/* Checkbox selección */}
-              <label className="absolute inline-flex items-center gap-2 px-2 py-1 text-xs border rounded-lg left-2 top-2 border-white/10 bg-black/35 backdrop-blur">
-                <input
-                  type="checkbox"
-                  className="size-3.5 rounded border-white/20 bg-white/10"
-                  checked={selected.includes(id)}
-                  onChange={() => toggleOne(id)}
-                />
-                Seleccionar
-              </label>
-            </div>
+            {/* Imagen arriba - ratio 4:3 */}
+<div className="relative w-full pb-[75%] bg-white">
+  <img
+    src={imageUrl}
+    alt=""
+    loading="lazy"
+    decoding="async"
+    className="absolute inset-0 w-full h-full object-cover select-none"
+    draggable={false}
+  />
+  {/* Checkbox selección */}
+  <label className="absolute inline-flex items-center gap-2 px-2 py-1 text-xs border rounded-lg left-2 top-2 border-white/10 bg-black/35 backdrop-blur">
+    <input
+      type="checkbox"
+      className="size-3.5 rounded border-white/20 bg-white/10"
+      checked={selected.includes(id)}
+      onChange={() => toggleOne(id)}
+    />
+    Seleccionar
+  </label>
+</div>
+
 
             {/* Datos sólidos */}
             <div className="p-3">

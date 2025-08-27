@@ -27,7 +27,7 @@ const slug = (s = "") =>
 
 export default function BookingSitePublic() {
   // ya no usamos siteSlug
-  const { bizSlug, branchSlug } = useParams();
+  const { branchSlug } = useParams();
 
   // Confirmación
   const [confirm, setConfirm] = useState(null); // { name, dateText, timeText, mapsQuery }
@@ -95,22 +95,6 @@ export default function BookingSitePublic() {
   // Modal de opciones: { main } | null
   const [optionModal, setOptionModal] = useState(null);
 
-  // Opciones disponibles del main actual o del que esté en modal
-  const optionOpts = useMemo(() => {
-    const base = optionModal?.main || selectedMain;
-    if (!base || !Array.isArray(base.options)) return [];
-    return base.options
-      .filter((o) => o.status !== "inactive")
-      .map((o) => ({
-        id: o.id,
-        name: o.name,
-        description: o.description || "",
-        price: o.price ?? 0,
-        duration: o.duration ?? 0,
-        imageUrl: o.imageUrl || "",
-      }));
-  }, [optionModal, selectedMain]);
-
   // Helper para obtener la opción seleccionada (cuando ya hay main elegido)
   const selectedOption = useMemo(() => {
     if (!selectedMain || !Array.isArray(selectedMain.options)) return null;
@@ -169,7 +153,6 @@ export default function BookingSitePublic() {
     }
     return res;
   };
-  const monthlyDays = daysOfMonth(monthBase);
 
   const generateSlots = (date) => {
     if (!selectedMain) return [];
@@ -1035,35 +1018,12 @@ function Step4Datos({
   const [paymentMethod, setPaymentMethod] = useState("online"); // 'online' | 'store'
   const [showSummary, setShowSummary] = useState(false);
 
-  const extrasNames =
-    extraIds
-      .map((id) => extraCalendars.find((e) => e.id === id)?.name)
-      .filter(Boolean) || [];
-  const staffName =
-    staffChoice === "random"
-      ? "Aleatorio"
-      : staff.find((s) => s.id === staffChoice)?.name;
       // ==== Desglose base / opción / extras ====
 const basePrice = Number(selectedMain?.price || 0);
 const baseDuration = Number(selectedMain?.duration || 0);
 
 const optPrice = selectedOption?.price != null ? Number(selectedOption.price) : 0;
 const optDuration = selectedOption?.duration != null ? Number(selectedOption.duration) : 0;
-
-const extrasBreakdown = (extraIds || [])
-  .map((id) => {
-    const ex = extraCalendars.find((e) => e.id === id);
-    if (!ex) return null;
-    return {
-      id,
-      name: ex.name,
-      price: Number(ex.price ?? 0) || 0,
-      duration: Number(ex.duration ?? 0) || 0,
-      imageUrl: ex.imageUrl || "",
-    };
-  })
-  .filter(Boolean);
-
 
   return (
     <section className={clsx(glass, "p-4")}>
@@ -1345,7 +1305,7 @@ function Field({ label, children }) {
 
 /* ===================== Confirmación ===================== */
 function ConfirmationScreen({ confirm, onClose }) {
-  const { name, dateText, timeText, mapsQuery } = confirm;
+  const { dateText, timeText, mapsQuery } = confirm;
   const line1 = "Cita reservada con éxito";
   const line3 = `${dateText} a las ${timeText}`;
   const mapsSrc = `https://www.google.com/maps?q=${encodeURIComponent(
