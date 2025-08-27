@@ -147,7 +147,7 @@ export default function CalendarManagement() {
               const url = `/booking/${bizSlug}/${branchSlug}`;
               window.open(url, "_blank", "noopener,noreferrer");
             }}
-          >
+          > 
             <Eye className="w-5 h-5" strokeWidth={1.75} aria-hidden="true" />
           </Button>
         </div>

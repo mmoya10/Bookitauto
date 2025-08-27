@@ -3,6 +3,10 @@
 import Staff1 from "../Images/Staff1.png";
 import Staff2 from "../Images/Staff2.png";
 import Staff3 from "../Images/Staff3.png";
+import Calendar1 from "../Images/Calendar1.png";
+import Calendar2 from "../Images/Calendar2.png";
+import Calendar3 from "../Images/Calendar3.png";
+import Calendar4 from "../Images/Calendar4.png";
 
 const delay = (ms = 200) => new Promise((r) => setTimeout(r, ms));
 const rid = () => Math.random().toString(36).slice(2, 10);
@@ -46,8 +50,7 @@ let memCalendars = [
     type: "main",
     name: "Corte Premium",
     description: "Corte con asesoría personalizada",
-    imageUrl:
-      "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhYWYyZjBiNzU4ODE5MTkyNzdlNGVjNjE1OGZkMzU6ZmlsZV8wMDAwMDAwMDI4MDA2MjJmOGVjMmFhYjFhMzUyZWEzYSIsInRzIjoiNDg3Nzg3IiwicCI6InB5aSIsInNpZyI6ImE3MDg2OGI1ZTQzYzJkOGI3ODY2NWE1NmY4MmNmMTUzYjc1ZTg3ZDRjNzgwMzQ5Nzc2MzM1YTk2ODI3N2NjYWQiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+    imageUrl: Calendar1,
     categoryId: "cat_cut",
     price: 24.9,
     duration: 45,
@@ -62,8 +65,7 @@ let memCalendars = [
     type: "main",
     name: "Corte Infantil",
     description: "Corte para niños hasta 12 años",
-    imageUrl:
-      "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhYWYzMmZlMzk4ODE5MWIzOTY2Y2M1YWY5MzFjOGQ6ZmlsZV8wMDAwMDAwMGMxOGM2MjJmOTA1OGI5YjllNDUwNjY3YyIsInRzIjoiNDg3Nzg3IiwicCI6InB5aSIsInNpZyI6ImJlMzFjMjBkNGE4ZjVhNDc3MmU5MDliZDUzMTNkYjAwODI0MTczYzEyZGMwMjkzYTY2YTY4MTcwNjViOGNmMWQiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+    imageUrl: Calendar3,
     categoryId: "cat_cut",
     price: 14.9,
     duration: 30,
@@ -76,10 +78,9 @@ let memCalendars = [
   {
     id: "cal_cut_3",
     type: "main",
-    name: "Corte Caballero",
+    name: "Estilado de barba",
     description: "Clásico o moderno",
-    imageUrl:
-      "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhYWYzYjc3MmU0ODE5MWE1Y2E3NTkzYzM4NGUxYTM6ZmlsZV8wMDAwMDAwMGQ0MTQ2MWZkYmU5NWMwZWU5OTIzMjc3YSIsInRzIjoiNDg3Nzg3IiwicCI6InB5aSIsInNpZyI6IjU3M2I3YjlmMmY1YmQxZDU1NjY4ZGY1MGQyOTA0OGMzYjhmOTcwOTA3ZjU5ZjZjZDkwNDAwYTUwNGViOWYyZGMiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+    imageUrl: Calendar2,
     categoryId: "cat_cut",
     price: 19.9,
     duration: 40,
@@ -94,8 +95,7 @@ let memCalendars = [
     type: "main",
     name: "Corte Señora",
     description: "Incluye lavado y peinado básico",
-    imageUrl:
-      "https://chatgpt.com/backend-api/public_content/enc/eyJpZCI6Im1fNjhhYWY0MTIxMWQ0ODE5MWI4M2EzZmNiMmJhMjFlNWI6ZmlsZV8wMDAwMDAwMGU0ZjQ2MWY3YjZjNDQ1ZjAyNDU3ZWNkMSIsInRzIjoiNDg3Nzg3IiwicCI6InB5aSIsInNpZyI6IjE5YmY4NWY2M2JjNDY4ZjBkODQ5ZTU0MGEwNTY1NWQ3MTQ3Yjg0Nzc5NmNjYzJmNDQ3M2JhYWUxNGQ2ODIyOTUiLCJ2IjoiMCIsImdpem1vX2lkIjpudWxsfQ==",
+    imageUrl: Calendar4,
     categoryId: "cat_cut",
     price: 29.9,
     duration: 50,

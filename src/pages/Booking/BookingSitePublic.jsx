@@ -4,8 +4,9 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import Button from "../../components/common/Button";
-import { Input } from "../../components/common/Input";
 import { fetchBusiness, fetchBranches } from "../../api/business";
+import CustomerForm from "../../components/forms/CustomerForm";
+import PaymentForm from "../../components/forms/PaymentForm";
 import {
   fetchCalendars,
   fetchCategories,
@@ -13,7 +14,7 @@ import {
 } from "../../api/calendars";
 
 const glass =
-  "rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)]";
+  "rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xl shadow-[0_10px_30px_rgba(255,255,255,0.35)]";
 const cardGlass =
   "border border-white/10 bg-white/5 hover:bg-white/10 rounded-2xl transition";
 
@@ -1018,58 +1019,23 @@ function Step4Datos({
   const [paymentMethod, setPaymentMethod] = useState("online"); // 'online' | 'store'
   const [showSummary, setShowSummary] = useState(false);
 
-      // ==== Desglose base / opción / extras ====
-const basePrice = Number(selectedMain?.price || 0);
-const baseDuration = Number(selectedMain?.duration || 0);
+  // ==== Desglose base / opción / extras ====
+  const basePrice = Number(selectedMain?.price || 0);
+  const baseDuration = Number(selectedMain?.duration || 0);
 
-const optPrice = selectedOption?.price != null ? Number(selectedOption.price) : 0;
-const optDuration = selectedOption?.duration != null ? Number(selectedOption.duration) : 0;
+  const optPrice =
+    selectedOption?.price != null ? Number(selectedOption.price) : 0;
+  const optDuration =
+    selectedOption?.duration != null ? Number(selectedOption.duration) : 0;
 
   return (
     <section className={clsx(glass, "p-4")}>
       <h2 className="mb-3 text-base font-semibold">4) Tus datos</h2>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label="Nombre">
-          <Input
-            value={form.nombre}
-            onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-          />
-        </Field>
-        <Field label="Apellidos">
-          <Input
-            value={form.apellidos}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, apellidos: e.target.value }))
-            }
-          />
-        </Field>
-        <Field label="Email">
-          <Input
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          />
-        </Field>
-        <Field label="Teléfono">
-          <Input
-            value={form.telefono}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, telefono: e.target.value }))
-            }
-          />
-        </Field>
-      </div>
-
-      <label className="inline-flex items-center gap-2 mt-2 text-sm">
-        <input
-          type="checkbox"
-          className="rounded size-4 border-white/20 bg-white/10"
-          checked={form.acepta}
-          onChange={(e) => setForm((f) => ({ ...f, acepta: e.target.checked }))}
-        />
-        Acepto recibir confirmación y recordatorios
-      </label>
+      <CustomerForm
+        value={form}
+        onChange={(partial) => setForm((f) => ({ ...f, ...partial }))}
+      />
 
       {/* Pago */}
       <div className="flex gap-2 mt-3">
@@ -1099,48 +1065,11 @@ const optDuration = selectedOption?.duration != null ? Number(selectedOption.dur
         </button>
       </div>
 
-      {paymentMethod === "online" && (
-        <div className="p-3 mt-3 border rounded-xl border-white/10 bg-white/5">
-          <div className="mb-2 text-sm font-semibold">Pago</div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Field label="Titular">
-              <Input
-                value={form.cardName || ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, cardName: e.target.value }))
-                }
-              />
-            </Field>
-            <Field label="Número tarjeta">
-              <Input
-                value={form.cardNumber || ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, cardNumber: e.target.value }))
-                }
-              />
-            </Field>
-            <Field label="Caducidad (MM/AA)">
-              <Input
-                value={form.cardExp || ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, cardExp: e.target.value }))
-                }
-              />
-            </Field>
-            <Field label="CVC">
-              <Input
-                value={form.cardCvc || ""}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, cardCvc: e.target.value }))
-                }
-              />
-            </Field>
-          </div>
-          <div className="mt-2 text-xs text-slate-300">
-            * Demo UI. Reemplaza por tu pasarela.
-          </div>
-        </div>
-      )}
+      <PaymentForm
+        method={paymentMethod}
+        value={form}
+        onChange={(partial) => setForm((f) => ({ ...f, ...partial }))}
+      />
 
       {/* Resumen (acordeón) */}
       <div className="mt-4">
@@ -1184,32 +1113,37 @@ const optDuration = selectedOption?.duration != null ? Number(selectedOption.dur
           )}
         >
           {/* Servicio */}
-<div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
-  <img
-    src={selectedMain?.imageUrl || "https://placehold.co/80x60?text=Svc"}
-    alt=""
-    className="object-cover w-16 h-12 border rounded-lg border-white/10"
-  />
-  <div className="min-w-0">
-    <div className="text-xs text-slate-300">Servicio</div>
-    <div className="text-sm font-semibold truncate">
-      {selectedMain?.name || "—"}
-      {selectedOption ? (
-        <span className="ml-1 text-slate-200">· Opción: {selectedOption.name}</span>
-      ) : null}
-    </div>
-    {/* Mini desglose base + opción */}
-    <div className="mt-1 text-xs text-slate-300">
-      Base: {baseDuration} min · {basePrice.toFixed(2)} €
-      {selectedOption ? (
-        <>
-          {" · "}Opción: {optDuration ? `+${optDuration} min` : "+0 min"} · +{optPrice.toFixed(2)} €
-        </>
-      ) : null}
-    </div>
-  </div>
-</div>
-
+          <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
+            <img
+              src={
+                selectedMain?.imageUrl || "https://placehold.co/80x60?text=Svc"
+              }
+              alt=""
+              className="object-cover w-16 h-12 border rounded-lg border-white/10"
+            />
+            <div className="min-w-0">
+              <div className="text-xs text-slate-300">Servicio</div>
+              <div className="text-sm font-semibold truncate">
+                {selectedMain?.name || "—"}
+                {selectedOption ? (
+                  <span className="ml-1 text-slate-200">
+                    · Opción: {selectedOption.name}
+                  </span>
+                ) : null}
+              </div>
+              {/* Mini desglose base + opción */}
+              <div className="mt-1 text-xs text-slate-300">
+                Base: {baseDuration} min · {basePrice.toFixed(2)} €
+                {selectedOption ? (
+                  <>
+                    {" · "}Opción:{" "}
+                    {optDuration ? `+${optDuration} min` : "+0 min"} · +
+                    {optPrice.toFixed(2)} €
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
 
           {/* Profesional */}
           <div className="flex items-center gap-3 p-3 border rounded-xl border-white/10 bg-white/5">
@@ -1266,7 +1200,6 @@ const optDuration = selectedOption?.duration != null ? Number(selectedOption.dur
               <div className="text-sm">Ninguno</div>
             )}
           </div>
-          
 
           {/* Datos y totales */}
           <div className="grid gap-2 sm:grid-cols-2">
@@ -1278,7 +1211,6 @@ const optDuration = selectedOption?.duration != null ? Number(selectedOption.dur
             <Stat label="Duración total" value={`${totalDuration} min`} />
             <Stat label="Total" value={`${totalPrice.toFixed(2)} €`} />
           </div>
-          
         </div>
       </div>
     </section>
@@ -1292,14 +1224,6 @@ function Stat({ label, value }) {
       <div className="text-xs text-slate-300">{label}</div>
       <div className="text-sm font-semibold">{value}</div>
     </div>
-  );
-}
-function Field({ label, children }) {
-  return (
-    <label className="grid gap-1.5">
-      <span className="text-xs text-slate-300">{label}</span>
-      {children}
-    </label>
   );
 }
 

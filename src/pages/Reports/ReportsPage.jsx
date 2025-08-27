@@ -20,6 +20,8 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 import { startOfMonth, endOfMonth } from "date-fns";
+import OptionSwitch from "../../components/common/OptionSwitch";
+
 
 const glassCard =
   "rounded-2xl border border-white/10 bg-white/10 backdrop-blur-lg shadow-[0_10px_30px_rgba(0,0,0,0.25)]";
@@ -137,22 +139,17 @@ export default function ReportsPage() {
       </header>
 
       {/* Tabs */}
-      <div className={clsx(glassCard, "p-2 flex gap-2 flex-wrap")}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={clsx(
-              "rounded-xl px-3 py-1.5 text-sm",
-              tab === t.key
-                ? "bg-[linear-gradient(90deg,#7c3aed,#22d3ee)] text-[#0b1020] font-semibold"
-                : "border border-white/10 bg-white/10 hover:bg-white/20"
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+     {/* Selector de informes */}
+<div className={clsx(glassCard, "p-2")}>
+  <OptionSwitch
+    value={tab}
+    onChange={setTab}
+    hidePanel
+    size="sm"
+    options={tabs.map(t => ({ value: t.key, label: t.label }))}
+  />
+</div>
+
 
       {/* Filtros base (rangos) */}
       <section className={clsx(glassCard, "p-4")}>
