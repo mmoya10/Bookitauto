@@ -12,6 +12,7 @@ import {
   IcMegaphone,
   IcBusiness,
   IcHorario,
+  IcCaja,
 } from "./Icons";
 
 /**
@@ -19,6 +20,7 @@ import {
  */
 export const mainMenu = [
   { to: "/calendarios", label: "Calendario", icon: IcCalendar },
+  { to: "/caja", label: "Caja", icon: IcCaja },
   { to: "/productos", label: "Productos", icon: IcProducts },
   { to: "/stock", label: "Stock", icon: IcBoxes },
   { to: "/usuarios", label: "Usuarios", icon: IcList },
@@ -37,3 +39,11 @@ export const settingsMenu = [
   { to: "/negocio", label: "Negocio", icon: IcBusiness, end: true },
   { to: "/facturacion", label: "Facturación", icon: IcFacturacion },
 ];
+
+// Empresa
+export const empresaMenu = [
+  { to: "/panel", label: "Panel", icon: IcChart, end: true },
+  { to: "/cuentas", label: "Cuentas", icon: IcUsers },
+  { to: "/estadisticas", label: "Estadísticas", icon: IcChart },
+];
+export const empresaSettingsMenu = [{ to: "/perfil", label: "Perfil", icon: IcProfile, end: true }];
