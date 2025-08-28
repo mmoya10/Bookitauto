@@ -48,9 +48,9 @@ const MOCK_USERS = [
       empresaPerms: null,
       clientePerms: {
         'Ver Caja': true, 'Gestionar Caja': true,
-        'Ver Productos': true, 'Gestionar Productos': true,
-        'Ver Stock': true, 'Gestionar stock': true,
-        'Ver Usuarios': true, 'Gestionar Usuarios': true,
+        'Ver Productos': false, 'Gestionar Productos': true,
+        'Ver Stock': false, 'Gestionar stock': true,
+        'Ver Usuarios': false, 'Gestionar Usuarios': true,
         'Ver Espacios': true, 'Gestionar Espacios': true,
         'Ver todos los informes': true,
         'Gestionar Horario': true,
@@ -189,7 +189,7 @@ export function AuthProvider({ children }) {
 
     // Cliente
     const clienteMap = {
-      '/calendarios': 'Ver Espacios',       // ej: calendario = recursos/espacios
+      '/calendarios': 'Ver Citas',       // ej: calendario = recursos/espacios
       '/caja': 'Ver Caja',
       '/productos': 'Ver Productos',
       '/stock': 'Ver Stock',
@@ -209,7 +209,7 @@ export function AuthProvider({ children }) {
       'Gestionar Espacios': 'Gestionar Espacios',
       'Ver todos los informes': 'Ver todos los informes',
     };
-
+ 
     if (isEmpresa) {
       const perm = empresaMap[featureKey] ?? featureKey;
       return hasEmpresaPerm(perm);

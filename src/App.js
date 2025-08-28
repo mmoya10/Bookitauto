@@ -1,4 +1,3 @@
-// src/App.js
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import QueryProvider from "./providers/QueryProvider";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
@@ -36,6 +35,17 @@ function RequireOrgType({ mustBe, children }) {
   return children;
 }
 
+// NUEVO: Guard por rol (lista blanca)
+function RequireRole({ allow, children }) {
+  const { user } = useAuth();
+  if (!user) return null; // lo gestiona RequireAuth
+  if (Array.isArray(allow) && !allow.includes(user.rol)) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
+// Mantiene ver/gestión por permisos (si además quieres bloquear por permiso concreto)
 function RequireFeature({ feature, children }) {
   const { user, hasFeature } = useAuth();
   const location = useLocation();
@@ -72,26 +82,30 @@ export default function App() {
               {/* INDEX */}
               <Route index element={<HomeIndex />} />
 
-              {/* EMPRESA (solo empresa) */}
+              {/* ================= EMPRESA (solo empresa) ================= */}
               <Route
                 path="/panel"
                 element={
                   <RequireOrgType mustBe="empresa">
-                    <RequireFeature feature="Tickets">
-                      <PanelPage />
-                    </RequireFeature>
+                    <RequireRole allow={["Admin", "Gestor"]}>
+                      {/* opcional: además por permiso de empresa */}
+                      <RequireFeature feature="Tickets">
+                        <PanelPage />
+                      </RequireFeature>
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
-              {/* Si añades estas páginas más tarde, descomenta: */}
-              {/*
+              {/* Ejemplos (descomenta si creas las páginas):
               <Route
                 path="/cuentas"
                 element={
                   <RequireOrgType mustBe="empresa">
-                    <RequireFeature feature="Cuentas">
-                      <CuentasPage />
-                    </RequireFeature>
+                    <RequireRole allow={["Admin","Gestor"]}>
+                      <RequireFeature feature="Cuentas">
+                        <CuentasPage />
+                      </RequireFeature>
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -99,20 +113,25 @@ export default function App() {
                 path="/estadisticas"
                 element={
                   <RequireOrgType mustBe="empresa">
-                    <RequireFeature feature="Personal">
-                      <EstadisticasPage />
-                    </RequireFeature>
+                    <RequireRole allow={["Admin","Gestor"]}>
+                      <RequireFeature feature="Personal">
+                        <EstadisticasPage />
+                      </RequireFeature>
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
               */}
 
-              {/* CLIENTES (solo clientes) */}
+              {/* ================= CLIENTES (solo clientes) ================= */}
+              {/* Nota: aquí dejo ejemplos de rol. Ajusta allow si quieres endurecer: */}
               <Route
                 path="perfil"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <ProfilePage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <ProfilePage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -120,7 +139,10 @@ export default function App() {
                 path="informes"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <ReportsPage />
+                    {/* p.ej. Informes para todos; si quieres, limítalo a Admin* */}
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <ReportsPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -128,7 +150,9 @@ export default function App() {
                 path="calendarios"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <CalendarsPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <CalendarsPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -136,7 +160,10 @@ export default function App() {
                 path="calendarios/gestion"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <CalendarManagementPage />
+                    {/* gestión normalmente NO para 'Personal' si quieres ser estricto */}
+                    <RequireRole allow={["Admin General", "Admin Sucursal"]}>
+                      <CalendarManagementPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -144,7 +171,10 @@ export default function App() {
                 path="facturacion"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <BillingPage />
+                    {/* ejemplo más estricto */}
+                    <RequireRole allow={["Admin General", "Admin Sucursal"]}>
+                      <BillingPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -152,7 +182,12 @@ export default function App() {
                 path="caja"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <CashPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      {/* además, bloquea por permiso de VER */}
+                      <RequireFeature feature="Ver Caja">
+                        <CashPage />
+                      </RequireFeature>
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -160,7 +195,9 @@ export default function App() {
                 path="stock"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <StockPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <StockPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -168,7 +205,9 @@ export default function App() {
                 path="productos"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <ProductsPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <ProductsPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -176,7 +215,9 @@ export default function App() {
                 path="personal"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <StaffPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal"]}>
+                      <StaffPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -184,7 +225,9 @@ export default function App() {
                 path="usuarios"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <UsersPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal"]}>
+                      <UsersPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -192,7 +235,9 @@ export default function App() {
                 path="espacios"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <SpacesPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <SpacesPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -200,7 +245,9 @@ export default function App() {
                 path="contacto"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <ContactsPage />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <ContactsPage />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -208,7 +255,9 @@ export default function App() {
                 path="marketing"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <Marketing />
+                    <RequireRole allow={["Admin General", "Admin Sucursal", "Personal"]}>
+                      <Marketing />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -216,7 +265,9 @@ export default function App() {
                 path="negocio"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <Negocio />
+                    <RequireRole allow={["Admin General", "Admin Sucursal"]}>
+                      <Negocio />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />
@@ -224,7 +275,9 @@ export default function App() {
                 path="schedule"
                 element={
                   <RequireOrgType mustBe="cliente">
-                    <Schedule />
+                    <RequireRole allow={["Admin General", "Admin Sucursal"]}>
+                      <Schedule />
+                    </RequireRole>
                   </RequireOrgType>
                 }
               />

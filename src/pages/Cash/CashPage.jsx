@@ -1,3 +1,4 @@
+// src/pages/Cash/CashPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -16,6 +17,7 @@ import Portal from "../../components/common/Portal";
 import clsx from "clsx";
 import { addDays, format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useAuth } from "../../hooks/useAuth";
 
 /* Estilo glass */
 const glassCard =
@@ -29,6 +31,10 @@ const prettyDay = (d) => format(d, "EEEE, d 'de' LLLL yyyy", { locale: es });
 
 export default function CashPage() {
   const qc = useQueryClient();
+
+  // ✅ hooks DENTRO del componente
+  const { hasFeature } = useAuth();
+  const canManageCash = hasFeature("Gestionar Caja"); // sin modo sucursal
 
   // Día seleccionado (por defecto hoy)
   const [day, setDay] = useState(() => new Date());
@@ -113,61 +119,60 @@ export default function CashPage() {
 
       {/* Navegación de días */}
       <section className={clsx(glassCard, "p-6 text-center")}>
-  <div className="space-y-3">
-    {/* Fecha en grande */}
-    <div className="text-2xl font-bold">{prettyDay(day)}</div>
+        <div className="space-y-3">
+          <div className="text-2xl font-bold">{prettyDay(day)}</div>
 
-    {/* Estado en grande y centrado */}
-    <div>
-      {box?.isOpen ? (
-        box?.isClosed ? (
-          <span className="inline-block px-4 py-1 text-lg font-medium border rounded-full border-emerald-400/40 bg-emerald-500/20 text-emerald-100">
-            Cerrada
-          </span>
-        ) : (
-          <span className="inline-block px-4 py-1 text-lg font-medium border rounded-full border-cyan-400/40 bg-cyan-500/20 text-cyan-100">
-            Abierta
-          </span>
-        )
-      ) : (
-        <span className="inline-block px-4 py-1 text-lg font-medium text-yellow-100 border rounded-full border-yellow-400/40 bg-yellow-500/20">
-          No abierta
-        </span>
-      )}
-    </div>
+          <div>
+            {box?.isOpen ? (
+              box?.isClosed ? (
+                <span className="inline-block px-4 py-1 text-lg font-medium border rounded-full border-emerald-400/40 bg-emerald-500/20 text-emerald-100">
+                  Cerrada
+                </span>
+              ) : (
+                <span className="inline-block px-4 py-1 text-lg font-medium border rounded-full border-cyan-400/40 bg-cyan-500/20 text-cyan-100">
+                  Abierta
+                </span>
+              )
+            ) : (
+              <span className="inline-block px-4 py-1 text-lg font-medium text-yellow-100 border rounded-full border-yellow-400/40 bg-yellow-500/20">
+                No abierta
+              </span>
+            )}
+          </div>
 
-    {/* Navegación de días */}
-    <div className="flex justify-center gap-3 pt-2">
-      <Button variant="ghost" onClick={() => setDay((d) => addDays(d, -1))}>
-        ← Día anterior
-      </Button>
-      <Button variant="ghost" onClick={() => setDay(new Date())}>
-        Hoy
-      </Button>
-      <Button variant="ghost" onClick={() => setDay((d) => addDays(d, +1))}>
-        Día siguiente →
-      </Button>
-    </div>
-  </div>
-</section>
-
+          <div className="flex justify-center gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setDay((d) => addDays(d, -1))}>
+              ← Día anterior
+            </Button>
+            <Button variant="ghost" onClick={() => setDay(new Date())}>
+              Hoy
+            </Button>
+            <Button variant="ghost" onClick={() => setDay((d) => addDays(d, +1))}>
+              Día siguiente →
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* 1) Cabecera de caja (apertura / estado / cierre / reabrir) */}
       <section className={clsx(glassCard, "p-4")}>
         {!box?.isOpen ? (
           <OpenBox
+            canManageCash={canManageCash}
             suggested={box?.suggestedOpening ?? 0}
             suggestedFrom={box?.suggestedFromDate}
             onOpen={(openingBalance, note) =>
-              mOpen.mutate({ dateISO: isoDay(day), openingBalance, note })
+              canManageCash && mOpen.mutate({ dateISO: isoDay(day), openingBalance, note })
             }
             loading={mOpen.isPending}
           />
         ) : box?.isClosed ? (
           <ClosedBox
+            canManageCash={canManageCash}
             box={box}
-            onReopen={() => mReopen.mutate({ dateISO: isoDay(day) })}
+            onReopen={() => canManageCash && mReopen.mutate({ dateISO: isoDay(day) })}
             onAdd={() =>
+              canManageCash &&
               setMvModal({
                 mode: "create",
                 values: {
@@ -182,9 +187,11 @@ export default function CashPage() {
           />
         ) : (
           <OpenBoxActions
+            canManageCash={canManageCash}
             openingBalance={box.openingBalance}
             totalDay={totalDay}
             onAdd={() =>
+              canManageCash &&
               setMvModal({
                 mode: "create",
                 values: {
@@ -197,6 +204,7 @@ export default function CashPage() {
               })
             }
             onClose={() =>
+              canManageCash &&
               setCloseModal({
                 expected: totalDay,
                 closingBalance: totalDay,
@@ -220,24 +228,27 @@ export default function CashPage() {
                 : "Caja no abierta: abre para añadir movimientos."}
             </p>
           </div>
-          <Button
-            variant="primary"
-            disabled={!box?.isOpen || box?.isClosed}
-            onClick={() =>
-              setMvModal({
-                mode: "create",
-                values: {
-                  amount: 0,
-                  kind: "ingreso",
-                  reason: "venta",
-                  note: "",
-                  atISO: new Date().toISOString(),
-                },
-              })
-            }
-          >
-            + Añadir movimiento
-          </Button>
+
+          {/* Crear movimiento: solo si puede gestionar */}
+          {canManageCash && box?.isOpen && !box?.isClosed && (
+            <Button
+              variant="primary"
+              onClick={() =>
+                setMvModal({
+                  mode: "create",
+                  values: {
+                    amount: 0,
+                    kind: "ingreso",
+                    reason: "venta",
+                    note: "",
+                    atISO: new Date().toISOString(),
+                  },
+                })
+              }
+            >
+              + Añadir movimiento
+            </Button>
+          )}
         </div>
 
         <div className="overflow-auto border rounded-xl border-white/10 bg-white/5">
@@ -249,7 +260,7 @@ export default function CashPage() {
                 <th className="px-3 py-2">Tipo</th>
                 <th className="px-3 py-2">Cantidad</th>
                 <th className="px-3 py-2">Nota</th>
-                <th className="px-3 py-2"></th>
+                {canManageCash && <th className="px-3 py-2"></th>}
               </tr>
             </thead>
             <tbody>
@@ -257,6 +268,7 @@ export default function CashPage() {
                 <MovementRow
                   key={m.id}
                   mv={m}
+                  actionsVisible={canManageCash}
                   disabled={!box?.isOpen}
                   onEdit={() => setMvModal({ mode: "edit", values: { ...m } })}
                   onDelete={() => mDelete.mutate({ dateISO: isoDay(day), id: m.id })}
@@ -264,7 +276,7 @@ export default function CashPage() {
               ))}
               {!moves?.length && (
                 <tr>
-                  <td className="px-3 py-3 text-slate-300" colSpan={6}>
+                  <td className="px-3 py-3 text-slate-300" colSpan={canManageCash ? 6 : 5}>
                     No hay movimientos.
                   </td>
                 </tr>
@@ -275,7 +287,7 @@ export default function CashPage() {
       </section>
 
       {/* Modal movimiento */}
-      {mvModal && (
+      {mvModal && canManageCash && (
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
@@ -302,7 +314,7 @@ export default function CashPage() {
       )}
 
       {/* Modal cierre */}
-      {closeModal && (
+      {closeModal && canManageCash && (
         <Portal>
           <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/40 p-4">
             <div className={clsx(glassCard, "w-[min(96vw,560px)] p-5")}>
@@ -329,7 +341,7 @@ export default function CashPage() {
 
 /* ===== Subcomponentes ===== */
 
-function OpenBox({ suggested, suggestedFrom, onOpen, loading }) {
+function OpenBox({ suggested, suggestedFrom, onOpen, loading, canManageCash }) {
   const [val, setVal] = useState(suggested);
   const [note, setNote] = useState("");
 
@@ -340,8 +352,7 @@ function OpenBox({ suggested, suggestedFrom, onOpen, loading }) {
   return (
     <div className="grid gap-3">
       <div className="text-sm">
-        Saldo sugerido de apertura:{" "}
-        <b>{fmtEUR(suggested)}</b>
+        Saldo sugerido de apertura: <b>{fmtEUR(suggested)}</b>
         {suggestedFrom ? (
           <span className="text-slate-300"> (último cierre: {format(new Date(suggestedFrom), "dd/MM/yyyy")})</span>
         ) : (
@@ -359,39 +370,45 @@ function OpenBox({ suggested, suggestedFrom, onOpen, loading }) {
         </div>
       </div>
       <div>
-        <Button variant="primary" onClick={() => onOpen(Number(val || 0), note)} disabled={loading}>
-          {loading ? "Abriendo…" : "Abrir caja"}
-        </Button>
+        {canManageCash && (
+          <Button variant="primary" onClick={() => onOpen(Number(val || 0), note)} disabled={loading}>
+            {loading ? "Abriendo…" : "Abrir caja"}
+          </Button>
+        )}
       </div>
     </div>
   );
 }
 
-function OpenBoxActions({ openingBalance, totalDay, onAdd, onClose }) {
+function OpenBoxActions({ openingBalance, totalDay, onAdd, onClose, canManageCash }) {
   return (
     <div className="grid gap-2 sm:grid-cols-3">
       <Stat label="Apertura" value={fmtEUR(openingBalance)} />
       <Stat label="Total actual" value={fmtEUR(totalDay)} />
       <div className="flex items-end gap-2">
-        <Button variant="ghost" onClick={onAdd}>
-          + Añadir movimiento
-        </Button>
-        <Button variant="primary" onClick={onClose}>
-          Cerrar caja
-        </Button>
+        {canManageCash && (
+          <>
+            <Button variant="ghost" onClick={onAdd}>+ Añadir movimiento</Button>
+            <Button variant="primary" onClick={onClose}>Cerrar caja</Button>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function ClosedBox({ box, onReopen, onAdd }) {
+function ClosedBox({ box, onReopen, onAdd, canManageCash }) {
   return (
     <div className="grid gap-2 sm:grid-cols-3">
       <Stat label="Apertura" value={fmtEUR(box.openingBalance)} />
       <Stat label="Cierre" value={fmtEUR(box.closingBalance)} />
       <div className="flex items-end gap-2">
-        <Button variant="ghost" onClick={onReopen}>Reabrir</Button>
-        <Button variant="ghost" onClick={onAdd} disabled>+ Añadir movimiento</Button>
+        {canManageCash && (
+          <>
+            <Button variant="ghost" onClick={onReopen}>Reabrir</Button>
+            <Button variant="ghost" onClick={onAdd} disabled>+ Añadir movimiento</Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -406,7 +423,7 @@ function Stat({ label, value }) {
   );
 }
 
-function MovementRow({ mv, disabled, onEdit, onDelete }) {
+function MovementRow({ mv, disabled, onEdit, onDelete, actionsVisible }) {
   const positive = Number(mv.amount) >= 0;
   return (
     <tr className="border-t border-white/10">
@@ -428,16 +445,18 @@ function MovementRow({ mv, disabled, onEdit, onDelete }) {
         {positive ? `+${fmtEUR(mv.amount)}` : `-${fmtEUR(Math.abs(mv.amount))}`}
       </td>
       <td className="px-3 py-2 text-slate-300">{mv.note || "-"}</td>
-      <td className="px-3 py-2">
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onEdit} disabled={disabled}>
-            Editar
-          </Button>
-          <Button variant="danger" size="sm" onClick={onDelete} disabled={disabled}>
-            Eliminar
-          </Button>
-        </div>
-      </td>
+      {actionsVisible && (
+        <td className="px-3 py-2">
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={onEdit} disabled={disabled}>
+              Editar
+            </Button>
+            <Button variant="danger" size="sm" onClick={onDelete} disabled={disabled}>
+              Eliminar
+            </Button>
+          </div>
+        </td>
+      )}
     </tr>
   );
 }
@@ -585,7 +604,6 @@ function toLocalInput(iso) {
   return d.toISOString().slice(0, 16);
 }
 function fromLocalInput(local) {
-  // local es 'YYYY-MM-DDTHH:mm'
   const d = new Date(local);
   d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
   return d.toISOString();

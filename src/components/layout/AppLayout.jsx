@@ -14,6 +14,8 @@ import TopbarMobile from "./TopbarMobile";
 import MobileDrawer from "./MobileDrawer";
 import ScrollToTop from "./ScrollToTop";
 
+// ...imports iguales...
+
 export default function AppLayout() {
   const [settingsMode, setSettingsMode] = useState(false);
   const { user, hasFeature } = useAuth();
@@ -26,7 +28,7 @@ export default function AppLayout() {
     enabled: !!business,
   });
 
-  // Active branch (persisted)
+  // Active branch
   const [activeBranchId, setActiveBranchId] = useLocalStorage("branch:active", "");
   const resolvedActiveBranchId = useMemo(() => {
     if (!branches?.length) return "";
@@ -34,14 +36,13 @@ export default function AppLayout() {
     return ok ? ok.id : branches[0].id;
   }, [branches, activeBranchId]);
 
-  // Menú activo según tipo de usuario + modo ajustes
+  // Menú por tipo
   const isEmpresa = user?.tipo === "Staff_Empresa";
-
   const baseMenu = isEmpresa ? empresaMenu : mainMenu;
   const baseSettingsMenu = isEmpresa ? empresaSettingsMenu ?? [] : settingsMenu;
   const rawMenu = settingsMode ? baseSettingsMenu : baseMenu;
 
-  // Mapa ruta -> permiso (según tipo)
+  // === Mapeos: Ruta -> Permiso y Ruta -> Roles permitidos ===
   const routeToFeature = isEmpresa
     ? {
         "/panel": "Tickets",
@@ -65,15 +66,45 @@ export default function AppLayout() {
         "/marketing": "Ver todos los informes", // ajusta si procede
       };
 
-  // Filtrado por permisos (en clientes considerar branchId para Admin Sucursal)
+  // Puedes endurecer aquí las visibilidades por rol:
+  const routeToAllowedRoles = isEmpresa
+    ? {
+        "/panel": ["Admin", "Gestor"],
+        "/cuentas": ["Admin", "Gestor"],
+        "/estadisticas": ["Admin", "Gestor"],
+        "/perfil": ["Admin", "Gestor"],
+      }
+    : {
+        // Clientes: por defecto todos ven, pero endurecemos algunos ejemplos:
+        "/calendarios": ["Admin General", "Admin Sucursal", "Personal"],
+        "/caja": ["Admin General", "Admin Sucursal", "Personal"],
+        "/productos": ["Admin General", "Admin Sucursal", "Personal"],
+        "/stock": ["Admin General", "Admin Sucursal", "Personal"],
+        "/usuarios": ["Admin General", "Admin Sucursal"], // ejemplo: sólo admins
+        "/personal": ["Admin General", "Admin Sucursal"], // ejemplo: sólo admins
+        "/negocio": ["Admin General", "Admin Sucursal"],  // ejemplo: sólo admins
+        "/schedule": ["Admin General", "Admin Sucursal"], // ejemplo: sólo admins
+        "/facturacion": ["Admin General", "Admin Sucursal"], // ejemplo: sólo admins
+        "/informes": ["Admin General", "Admin Sucursal", "Personal"],
+        "/perfil": ["Admin General", "Admin Sucursal", "Personal"],
+        "/espacios": ["Admin General", "Admin Sucursal", "Personal"],
+        "/marketing": ["Admin General", "Admin Sucursal", "Personal"],
+      };
+
+  // Filtro por ROL + PERMISO
   const filteredMenu = rawMenu.filter((item) => {
+    // 1) Rol permitido
+    const allowed = routeToAllowedRoles[item.to];
+    const roleOk = !allowed || allowed.includes(user?.rol);
+
+    // 2) Permiso funcional
     const featureKey = routeToFeature[item.to];
-    if (!featureKey) return true;
     const opts = isEmpresa ? undefined : { branchId: resolvedActiveBranchId };
-    return hasFeature(featureKey, opts);
+    const featureOk = featureKey ? hasFeature(featureKey, opts) : true;
+
+    return roleOk && featureOk;
   });
 
-  // Mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -81,7 +112,6 @@ export default function AppLayout() {
       className="min-h-[100svh] flex flex-col md:grid md:grid-cols-[auto_1fr] text-zinc-100 bg-fixed bg-no-repeat
 bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40%),radial-gradient(1200px_600px_at_90%_90%,rgba(34,211,238,0.40),transparent_40%),linear-gradient(120deg,#0f172a,#1e293b)]"
     >
-      {/* Sidebar desktop */}
       <Sidebar
         menu={filteredMenu}
         business={business}
@@ -93,7 +123,6 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
         setSettingsMode={setSettingsMode}
       />
 
-      {/* Topbar móvil */}
       <TopbarMobile
         onOpenMenu={() => setMobileOpen(true)}
         business={business}
@@ -103,7 +132,6 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
         setActiveBranchId={setActiveBranchId}
       />
 
-      {/* Main */}
       <div className="min-w-0 flex-1">
         <main className="p-6">
           <ScrollToTop />
@@ -111,7 +139,6 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
         </main>
       </div>
 
-      {/* Drawer móvil */}
       <MobileDrawer
         open={mobileOpen}
         onClose={() => {
@@ -128,8 +155,8 @@ bg-[radial-gradient(1200px_600px_at_10%_10%,rgba(124,58,237,0.40),transparent_40
         setSettingsMode={setSettingsMode}
       />
 
-      {/* Notificaciones flotantes */}
       <NotifyBell />
     </div>
   );
 }
+

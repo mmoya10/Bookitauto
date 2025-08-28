@@ -377,7 +377,7 @@ export default function CalendarsPage() {
             const ev = actionPick.event;
             setActionPick({ open: false, event: null });
             setCompletePanel({ open: true, event: ev });
-          }}
+          }} 
         />
       )}
 

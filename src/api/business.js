@@ -52,15 +52,6 @@ let memBusiness = {
   timezone: "Europe/Madrid",
 
   branchMode: true,
-  notifications: {
-    channels: { email: true, sms: false, whatsapp: false },
-    events: { confirmation: true, cancellation: true, rescheduled: true },
-    reminders: [
-      { id: rid(), hoursBefore: 24 },
-      { id: rid(), hoursBefore: 3 },
-    ],
-    review: { hoursAfter: 4, followup: true },
-  },
 };
 
 // ====== (1) Estado inicial: añade un campo schedule al negocio ======
